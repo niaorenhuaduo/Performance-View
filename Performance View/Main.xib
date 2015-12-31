@@ -1,0 +1,858 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="5056" systemVersion="14C109" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none">
+    <dependencies>
+        <deployment defaultVersion="1090" identifier="macosx"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="5056"/>
+    </dependencies>
+    <objects>
+        <customObject id="-2" userLabel="File's Owner" customClass="AppDelegate">
+            <connections>
+                <outlet property="EditSoloLabelOutlet" destination="988" id="1458"/>
+                <outlet property="Spectrogram" destination="594" id="671"/>
+                <outlet property="delegate" destination="494" id="495"/>
+            </connections>
+        </customObject>
+        <customObject id="-1" userLabel="First Responder" customClass="FirstResponder"/>
+        <customObject id="-3" userLabel="Application"/>
+        <menu title="AMainMenu" systemMenu="main" id="1232">
+            <items>
+                <menuItem title="Cadenza" id="1236">
+                    <menu key="submenu" title="Cadenza" systemMenu="apple" id="1260">
+                        <items>
+                            <menuItem title="About Cadenza" id="1263">
+                                <modifierMask key="keyEquivalentModifierMask"/>
+                            </menuItem>
+                            <menuItem isSeparatorItem="YES" id="1269">
+                                <modifierMask key="keyEquivalentModifierMask" command="YES"/>
+                            </menuItem>
+                            <menuItem title="Shop for Music..." id="1262">
+                                <modifierMask key="keyEquivalentModifierMask"/>
+                            </menuItem>
+                            <menuItem isSeparatorItem="YES" id="1261"/>
+                            <menuItem title="Hide Cadenza" keyEquivalent="h" id="1264">
+                                <connections>
+                                    <action selector="HideApplication:" target="494" id="1352"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Hide Others" keyEquivalent="h" id="1271">
+                                <modifierMask key="keyEquivalentModifierMask" option="YES" command="YES"/>
+                                <connections>
+                                    <action selector="HideOthersAction:" target="494" id="1351"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Show All" id="1265">
+                                <connections>
+                                    <action selector="BringAllToFront:" target="494" id="1384"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem isSeparatorItem="YES" id="1270">
+                                <modifierMask key="keyEquivalentModifierMask" command="YES"/>
+                            </menuItem>
+                            <menuItem title="Quit Cadenza" keyEquivalent="q" id="1266">
+                                <connections>
+                                    <action selector="MenuExit:" target="494" id="1349"/>
+                                </connections>
+                            </menuItem>
+                        </items>
+                    </menu>
+                </menuItem>
+                <menuItem title="Play" id="1239">
+                    <menu key="submenu" title="Play" id="1240">
+                        <items>
+                            <menuItem title="Open..." keyEquivalent="o" id="1247">
+                                <connections>
+                                    <action selector="StartupAction:" target="494" id="1359"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Rehearse..." keyEquivalent="r" id="1433">
+                                <connections>
+                                    <action selector="MenuRehearsalAction:" target="494" id="1434"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem isSeparatorItem="YES" id="1411"/>
+                            <menuItem title="Rehearsal Settings..." keyEquivalent="," id="1412">
+                                <connections>
+                                    <action selector="MenuLiveOptions:" target="494" id="1413"/>
+                                </connections>
+                            </menuItem>
+                        </items>
+                    </menu>
+                </menuItem>
+                <menuItem title="Review" id="1396">
+                    <modifierMask key="keyEquivalentModifierMask"/>
+                    <menu key="submenu" title="Review" id="1397">
+                        <items>
+                            <menuItem title="Review Rehearsal..." id="1398">
+                                <modifierMask key="keyEquivalentModifierMask"/>
+                                <connections>
+                                    <action selector="MenuLoadTake:" target="494" id="1400"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Reset Training..." id="1408">
+                                <modifierMask key="keyEquivalentModifierMask"/>
+                                <connections>
+                                    <action selector="MenuResetTraining:" target="494" id="1409"/>
+                                </connections>
+                            </menuItem>
+                        </items>
+                    </menu>
+                </menuItem>
+                <menuItem title="Window" id="1233">
+                    <modifierMask key="keyEquivalentModifierMask"/>
+                    <menu key="submenu" title="Window" systemMenu="window" id="1280">
+                        <items>
+                            <menuItem title="Minimize" keyEquivalent="m" id="1284">
+                                <connections>
+                                    <action selector="MinimizeAction:" target="494" id="1368"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Close" keyEquivalent="w" id="1438">
+                                <connections>
+                                    <action selector="closeWindow:" target="494" id="1439"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Zoom" id="1283">
+                                <modifierMask key="keyEquivalentModifierMask"/>
+                                <connections>
+                                    <action selector="ZoomCurrentWindow:" target="494" id="1370"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem isSeparatorItem="YES" id="1282"/>
+                            <menuItem title="Bring All to Front" id="1281">
+                                <modifierMask key="keyEquivalentModifierMask"/>
+                                <connections>
+                                    <action selector="BringAllToFront:" target="494" id="1369"/>
+                                </connections>
+                            </menuItem>
+                        </items>
+                    </menu>
+                </menuItem>
+                <menuItem title="Store" id="1375">
+                    <modifierMask key="keyEquivalentModifierMask"/>
+                    <menu key="submenu" title="Store" id="1376">
+                        <items>
+                            <menuItem title="Shop for Music..." id="1378">
+                                <modifierMask key="keyEquivalentModifierMask"/>
+                            </menuItem>
+                        </items>
+                    </menu>
+                </menuItem>
+                <menuItem title="Help" id="1234">
+                    <modifierMask key="keyEquivalentModifierMask"/>
+                    <menu key="submenu" title="Help" systemMenu="help" id="1275">
+                        <items>
+                            <menuItem title="Cadenza Help" keyEquivalent="?" id="1279"/>
+                            <menuItem isSeparatorItem="YES" id="1276"/>
+                            <menuItem title="Tutorials…" id="1277">
+                                <modifierMask key="keyEquivalentModifierMask"/>
+                            </menuItem>
+                            <menuItem title="Online Help" id="1278">
+                                <modifierMask key="keyEquivalentModifierMask"/>
+                            </menuItem>
+                        </items>
+                    </menu>
+                </menuItem>
+            </items>
+        </menu>
+        <window title="Review" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" releasedWhenClosed="NO" visibleAtLaunch="NO" animationBehavior="default" id="371">
+            <windowStyleMask key="styleMask" titled="YES" closable="YES" miniaturizable="YES" resizable="YES"/>
+            <windowPositionMask key="initialPositionMask" topStrut="YES"/>
+            <rect key="contentRect" x="335" y="161" width="1274" height="805"/>
+            <rect key="screenRect" x="0.0" y="0.0" width="1920" height="1178"/>
+            <view key="contentView" id="372" customClass="MainWindow">
+                <rect key="frame" x="0.0" y="0.0" width="1274" height="805"/>
+                <autoresizingMask key="autoresizingMask" flexibleMaxY="YES"/>
+                <subviews>
+                    <customView toolTip="spectrogram of rehearsal" id="594" customClass="MyNSView">
+                        <rect key="frame" x="0.0" y="287" width="2064" height="498"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" flexibleMinY="YES"/>
+                        <subviews>
+                            <scrollView autohidesScrollers="YES" horizontalLineScroll="19" horizontalPageScroll="10" verticalLineScroll="19" verticalPageScroll="10" usesPredominantAxisScrolling="NO" id="879">
+                                <rect key="frame" x="71" y="779" width="240" height="37"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                <clipView key="contentView" id="RDj-eu-c7R">
+                                    <rect key="frame" x="1" y="0.0" width="238" height="36"/>
+                                    <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                                    <subviews>
+                                        <tableView verticalHuggingPriority="750" allowsExpansionToolTips="YES" columnAutoresizingStyle="lastColumnOnly" columnSelection="YES" multipleSelection="NO" autosaveColumns="NO" headerView="882" id="880">
+                                            <rect key="frame" x="0.0" y="0.0" width="238" height="19"/>
+                                            <autoresizingMask key="autoresizingMask"/>
+                                            <size key="intercellSpacing" width="3" height="2"/>
+                                            <color key="backgroundColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
+                                            <color key="gridColor" name="gridColor" catalog="System" colorSpace="catalog"/>
+                                            <tableColumns>
+                                                <tableColumn width="101" minWidth="40" maxWidth="1000" id="884">
+                                                    <tableHeaderCell key="headerCell" lineBreakMode="truncatingTail" borderStyle="border" alignment="left">
+                                                        <font key="font" metaFont="smallSystem"/>
+                                                        <color key="textColor" name="headerTextColor" catalog="System" colorSpace="catalog"/>
+                                                        <color key="backgroundColor" white="0.33333298560000002" alpha="1" colorSpace="calibratedWhite"/>
+                                                    </tableHeaderCell>
+                                                    <textFieldCell key="dataCell" lineBreakMode="truncatingTail" selectable="YES" editable="YES" alignment="left" title="Text Cell" id="887">
+                                                        <font key="font" metaFont="system"/>
+                                                        <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
+                                                        <color key="backgroundColor" name="controlBackgroundColor" catalog="System" colorSpace="catalog"/>
+                                                    </textFieldCell>
+                                                    <tableColumnResizingMask key="resizingMask" resizeWithTable="YES" userResizable="YES"/>
+                                                </tableColumn>
+                                                <tableColumn width="131" minWidth="40" maxWidth="1000" id="885">
+                                                    <tableHeaderCell key="headerCell" lineBreakMode="truncatingTail" borderStyle="border" alignment="left">
+                                                        <font key="font" metaFont="smallSystem"/>
+                                                        <color key="textColor" name="headerTextColor" catalog="System" colorSpace="catalog"/>
+                                                        <color key="backgroundColor" white="0.33333298560000002" alpha="1" colorSpace="calibratedWhite"/>
+                                                    </tableHeaderCell>
+                                                    <textFieldCell key="dataCell" lineBreakMode="truncatingTail" selectable="YES" editable="YES" alignment="left" title="Text Cell" id="886">
+                                                        <font key="font" metaFont="system"/>
+                                                        <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
+                                                        <color key="backgroundColor" name="controlBackgroundColor" catalog="System" colorSpace="catalog"/>
+                                                    </textFieldCell>
+                                                    <tableColumnResizingMask key="resizingMask" resizeWithTable="YES" userResizable="YES"/>
+                                                </tableColumn>
+                                            </tableColumns>
+                                        </tableView>
+                                    </subviews>
+                                    <color key="backgroundColor" name="controlBackgroundColor" catalog="System" colorSpace="catalog"/>
+                                </clipView>
+                                <scroller key="horizontalScroller" hidden="YES" verticalHuggingPriority="750" horizontal="YES" id="881">
+                                    <rect key="frame" x="1" y="115.72839200496674" width="230.77989959716797" height="15"/>
+                                    <autoresizingMask key="autoresizingMask"/>
+                                </scroller>
+                                <scroller key="verticalScroller" hidden="YES" verticalHuggingPriority="750" doubleValue="1" horizontal="NO" id="883">
+                                    <rect key="frame" x="224" y="17" width="15" height="18"/>
+                                    <autoresizingMask key="autoresizingMask"/>
+                                </scroller>
+                                <tableHeaderView key="headerView" id="882">
+                                    <rect key="frame" x="0.0" y="0.0" width="238" height="17"/>
+                                    <autoresizingMask key="autoresizingMask"/>
+                                </tableHeaderView>
+                            </scrollView>
+                        </subviews>
+                    </customView>
+                    <button hidden="YES" verticalHuggingPriority="750" id="736">
+                        <rect key="frame" x="1092" y="216" width="82" height="32"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                        <buttonCell key="cell" type="push" title="Stop" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="737">
+                            <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
+                            <font key="font" metaFont="system"/>
+                        </buttonCell>
+                        <connections>
+                            <action selector="StopLiveButton:" target="494" id="738"/>
+                        </connections>
+                    </button>
+                    <button hidden="YES" toolTip="toggle between navigate and live panels" id="775">
+                        <rect key="frame" x="1189" y="188" width="32" height="29"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                        <buttonCell key="cell" type="square" bezelStyle="shadowlessSquare" image="RightLeftArrow" imagePosition="only" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="776">
+                            <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
+                            <font key="font" metaFont="system"/>
+                        </buttonCell>
+                        <connections>
+                            <action selector="ToggleAction:" target="494" id="777"/>
+                        </connections>
+                    </button>
+                    <button hidden="YES" verticalHuggingPriority="750" id="733">
+                        <rect key="frame" x="985" y="216" width="82" height="32"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                        <buttonCell key="cell" type="push" title="Synthesize" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="734">
+                            <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
+                            <font key="font" metaFont="system"/>
+                            <connections>
+                                <action selector="SynthesizeButton:" target="494" id="735"/>
+                            </connections>
+                        </buttonCell>
+                    </button>
+                    <tabView type="bottomTabsBezelBorder" initialItem="941" id="936">
+                        <rect key="frame" x="278" y="60" width="611" height="175"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                        <font key="font" metaFont="system"/>
+                        <tabViewItems>
+                            <tabViewItem label="Options" identifier="1" id="941">
+                                <view key="view" id="942">
+                                    <rect key="frame" x="10" y="7" width="591" height="137"/>
+                                    <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                                    <subviews>
+                                        <textField verticalHuggingPriority="750" id="947">
+                                            <rect key="frame" x="160" y="71" width="186" height="17"/>
+                                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                            <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="Play solo note markers using" id="964">
+                                                <font key="font" metaFont="system"/>
+                                                <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
+                                                <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
+                                            </textFieldCell>
+                                        </textField>
+                                        <popUpButton verticalHuggingPriority="750" id="945">
+                                            <rect key="frame" x="361" y="64" width="99" height="26"/>
+                                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                            <popUpButtonCell key="cell" type="push" title="tones" bezelStyle="rounded" alignment="left" lineBreakMode="truncatingTail" state="on" borderStyle="borderAndBezel" imageScaling="proportionallyDown" inset="2" selectedItem="969" id="967">
+                                                <behavior key="behavior" lightByBackground="YES" lightByGray="YES"/>
+                                                <font key="font" metaFont="menu"/>
+                                                <menu key="menu" title="OtherViews" id="968">
+                                                    <items>
+                                                        <menuItem title="clicks" id="970">
+                                                            <modifierMask key="keyEquivalentModifierMask"/>
+                                                        </menuItem>
+                                                        <menuItem title="tones" state="on" id="969">
+                                                            <modifierMask key="keyEquivalentModifierMask"/>
+                                                        </menuItem>
+                                                    </items>
+                                                </menu>
+                                            </popUpButtonCell>
+                                            <connections>
+                                                <action selector="NoteMarksSoundMenuChangeAction:" target="494" id="1225"/>
+                                            </connections>
+                                        </popUpButton>
+                                        <textField verticalHuggingPriority="750" id="944">
+                                            <rect key="frame" x="401" y="38" width="60" height="17"/>
+                                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                            <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="markers " id="971">
+                                                <font key="font" metaFont="system"/>
+                                                <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
+                                                <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
+                                            </textFieldCell>
+                                        </textField>
+                                        <popUpButton verticalHuggingPriority="750" id="943">
+                                            <rect key="frame" x="219" y="31" width="180" height="26"/>
+                                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                            <popUpButtonCell key="cell" type="push" bezelStyle="rounded" alignment="left" lineBreakMode="truncatingTail" borderStyle="borderAndBezel" imageScaling="proportionallyUpOrDown" inset="2" id="973">
+                                                <behavior key="behavior" lightByBackground="YES" lightByGray="YES"/>
+                                                <font key="font" metaFont="menu"/>
+                                                <menu key="menu" title="OtherViews" id="974">
+                                                    <items>
+                                                        <menuItem title="all" id="984">
+                                                            <modifierMask key="keyEquivalentModifierMask"/>
+                                                        </menuItem>
+                                                        <menuItem title="bar line" id="976">
+                                                            <modifierMask key="keyEquivalentModifierMask"/>
+                                                        </menuItem>
+                                                        <menuItem isSeparatorItem="YES" image="Screen Shot 2013-02-10 at 2.25.18 PM" id="975"/>
+                                                        <menuItem title="half-note" image="note-values-half" id="980">
+                                                            <modifierMask key="keyEquivalentModifierMask"/>
+                                                        </menuItem>
+                                                        <menuItem title="quarter-note" image="note-values-quarter" id="977">
+                                                            <modifierMask key="keyEquivalentModifierMask"/>
+                                                        </menuItem>
+                                                        <menuItem title="eighth-note" image="note-values-eighth" id="981">
+                                                            <modifierMask key="keyEquivalentModifierMask"/>
+                                                        </menuItem>
+                                                        <menuItem title="sixteenth-note" image="note-values-sixteenth" id="983">
+                                                            <attributedString key="attributedTitle"/>
+                                                            <modifierMask key="keyEquivalentModifierMask"/>
+                                                        </menuItem>
+                                                        <menuItem title="dotted quarter-note" image="note-values-dotted-quarter" id="982">
+                                                            <modifierMask key="keyEquivalentModifierMask"/>
+                                                        </menuItem>
+                                                        <menuItem title="dotted eighth-note" image="note-values-dotted-eighth" id="979">
+                                                            <modifierMask key="keyEquivalentModifierMask"/>
+                                                        </menuItem>
+                                                    </items>
+                                                </menu>
+                                            </popUpButtonCell>
+                                            <connections>
+                                                <action selector="NoteMarksIncMenuChangeAction:" target="494" id="1226"/>
+                                            </connections>
+                                        </popUpButton>
+                                        <button id="1228">
+                                            <rect key="frame" x="161" y="36" width="60" height="18"/>
+                                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                            <buttonCell key="cell" type="check" title="Show" bezelStyle="regularSquare" imagePosition="left" state="on" inset="2" id="1229">
+                                                <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
+                                                <font key="font" metaFont="system"/>
+                                            </buttonCell>
+                                            <connections>
+                                                <action selector="MarkerCheckAction:" target="494" id="1230"/>
+                                            </connections>
+                                        </button>
+                                        <textField verticalHuggingPriority="750" id="1426">
+                                            <rect key="frame" x="159" y="103" width="93" height="17"/>
+                                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                            <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="Solo Notes" id="1427">
+                                                <font key="font" metaFont="systemBold" size="14"/>
+                                                <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
+                                                <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
+                                            </textFieldCell>
+                                        </textField>
+                                    </subviews>
+                                </view>
+                            </tabViewItem>
+                            <tabViewItem label="Refine" identifier="2" id="940">
+                                <view key="view" id="985">
+                                    <rect key="frame" x="10" y="7" width="591" height="137"/>
+                                    <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                                    <subviews>
+                                        <button focusRingType="none" verticalHuggingPriority="750" id="992">
+                                            <rect key="frame" x="256" y="27" width="71" height="32"/>
+                                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                            <buttonCell key="cell" type="push" title="Undo" bezelStyle="rounded" alignment="center" state="on" borderStyle="border" focusRingType="none" imageScaling="proportionallyDown" inset="2" id="1024">
+                                                <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
+                                                <font key="font" metaFont="cellTitle"/>
+                                                <string key="keyEquivalent">z</string>
+                                                <modifierMask key="keyEquivalentModifierMask" command="YES"/>
+                                            </buttonCell>
+                                            <connections>
+                                                <action selector="RefineUndoAction:" target="494" id="1220"/>
+                                            </connections>
+                                        </button>
+                                        <button focusRingType="none" verticalHuggingPriority="750" id="991">
+                                            <rect key="frame" x="350" y="27" width="199" height="32"/>
+                                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                            <buttonCell key="cell" type="push" title="Align Solo Markers &amp; Audio" bezelStyle="rounded" alignment="center" state="on" borderStyle="border" focusRingType="none" imageScaling="proportionallyDown" inset="2" id="1025">
+                                                <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
+                                                <font key="font" metaFont="cellTitle"/>
+                                                <string key="keyEquivalent">r</string>
+                                            </buttonCell>
+                                            <connections>
+                                                <action selector="RefineAlignAction:" target="494" id="1219"/>
+                                            </connections>
+                                        </button>
+                                        <textField verticalHuggingPriority="750" id="989">
+                                            <rect key="frame" x="45" y="36" width="139" height="17"/>
+                                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                            <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="Nudge selected marker" id="1028">
+                                                <font key="font" metaFont="cellTitle"/>
+                                                <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
+                                                <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
+                                            </textFieldCell>
+                                        </textField>
+                                        <textField verticalHuggingPriority="750" id="988">
+                                            <rect key="frame" x="45" y="103" width="157" height="17"/>
+                                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                            <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="Edit Solo Note Markers" id="1029">
+                                                <font key="font" metaFont="systemBold"/>
+                                                <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
+                                                <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
+                                            </textFieldCell>
+                                        </textField>
+                                        <button id="987">
+                                            <rect key="frame" x="229" y="32" width="25" height="25"/>
+                                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                            <buttonCell key="cell" type="square" title="&gt;" bezelStyle="shadowlessSquare" imagePosition="overlaps" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="1031">
+                                                <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
+                                                <font key="font" metaFont="label"/>
+                                            </buttonCell>
+                                            <connections>
+                                                <action selector="RefineNudgeRightAction:" target="494" id="1217"/>
+                                            </connections>
+                                        </button>
+                                        <button id="986">
+                                            <rect key="frame" x="194" y="32" width="25" height="25"/>
+                                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                            <buttonCell key="cell" type="square" title="&lt;" bezelStyle="shadowlessSquare" imagePosition="overlaps" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="1033">
+                                                <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
+                                                <font key="font" metaFont="label"/>
+                                            </buttonCell>
+                                            <connections>
+                                                <action selector="RefineNudgeLeftAction:" target="494" id="1216"/>
+                                            </connections>
+                                        </button>
+                                    </subviews>
+                                </view>
+                            </tabViewItem>
+                            <tabViewItem label="Audio Mix" identifier="" id="939">
+                                <view key="view" id="1034">
+                                    <rect key="frame" x="10" y="7" width="591" height="137"/>
+                                    <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                                    <subviews>
+                                        <box autoresizesSubviews="NO" title="Box" borderType="line" titlePosition="noTitle" id="1035">
+                                            <rect key="frame" x="11" y="1" width="570" height="40"/>
+                                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                            <view key="contentView">
+                                                <rect key="frame" x="1" y="1" width="568" height="38"/>
+                                                <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                                                <subviews>
+                                                    <textField verticalHuggingPriority="750" id="1148">
+                                                        <rect key="frame" x="321" y="9" width="19" height="17"/>
+                                                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                                        <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="L" id="1186">
+                                                            <font key="font" metaFont="system" size="10"/>
+                                                            <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
+                                                            <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
+                                                        </textFieldCell>
+                                                    </textField>
+                                                    <textField verticalHuggingPriority="750" id="1147">
+                                                        <rect key="frame" x="461" y="9" width="19" height="17"/>
+                                                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                                        <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" alignment="right" title="R" id="1188">
+                                                            <font key="font" metaFont="system" size="10"/>
+                                                            <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
+                                                            <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
+                                                        </textFieldCell>
+                                                    </textField>
+                                                    <slider verticalHuggingPriority="750" id="1151">
+                                                        <rect key="frame" x="172" y="12" width="130" height="15"/>
+                                                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                                        <sliderCell key="cell" controlSize="small" continuous="YES" state="on" alignment="left" maxValue="100" doubleValue="50" tickMarkPosition="above" sliderType="linear" id="1180"/>
+                                                        <connections>
+                                                            <action selector="SimpleMarkVolAction:" target="494" id="1197"/>
+                                                        </connections>
+                                                    </slider>
+                                                    <slider verticalHuggingPriority="750" id="1149">
+                                                        <rect key="frame" x="333" y="11" width="130" height="15"/>
+                                                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                                        <sliderCell key="cell" controlSize="small" continuous="YES" state="on" alignment="left" maxValue="100" doubleValue="50" tickMarkPosition="above" sliderType="linear" id="1183"/>
+                                                        <connections>
+                                                            <action selector="SimpleMarkBalAction:" target="494" id="1198"/>
+                                                        </connections>
+                                                    </slider>
+                                                    <textField verticalHuggingPriority="750" id="1152">
+                                                        <rect key="frame" x="48" y="9" width="109" height="17"/>
+                                                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                                        <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="Note Markers" id="1179">
+                                                            <font key="font" metaFont="systemBold" size="12"/>
+                                                            <color key="textColor" name="textColor" catalog="System" colorSpace="catalog"/>
+                                                            <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
+                                                        </textFieldCell>
+                                                    </textField>
+                                                    <button verticalHuggingPriority="750" id="1146">
+                                                        <rect key="frame" x="3" y="7" width="42" height="19"/>
+                                                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                                        <buttonCell key="cell" type="recessed" title="MUTE" bezelStyle="recessed" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="1190">
+                                                            <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES" changeBackground="YES" changeGray="YES"/>
+                                                            <font key="font" metaFont="systemBold" size="10"/>
+                                                        </buttonCell>
+                                                        <connections>
+                                                            <action selector="SimpleMarkMuteAction:" target="494" id="1199"/>
+                                                        </connections>
+                                                    </button>
+                                                </subviews>
+                                            </view>
+                                            <color key="borderColor" white="0.0" alpha="0.41999999999999998" colorSpace="calibratedWhite"/>
+                                            <color key="fillColor" white="0.0" alpha="0.0" colorSpace="calibratedWhite"/>
+                                        </box>
+                                        <box autoresizesSubviews="NO" title="Box" borderType="line" titlePosition="noTitle" id="1038">
+                                            <rect key="frame" x="11" y="40" width="570" height="40"/>
+                                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                            <view key="contentView">
+                                                <rect key="frame" x="1" y="1" width="568" height="38"/>
+                                                <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                                                <subviews>
+                                                    <textField verticalHuggingPriority="750" id="1078">
+                                                        <rect key="frame" x="320" y="9" width="19" height="17"/>
+                                                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                                        <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="L" id="1085">
+                                                            <font key="font" metaFont="system" size="10"/>
+                                                            <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
+                                                            <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
+                                                        </textFieldCell>
+                                                    </textField>
+                                                    <textField verticalHuggingPriority="750" id="1079">
+                                                        <rect key="frame" x="461" y="9" width="19" height="17"/>
+                                                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                                        <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" alignment="right" title="R" id="1083">
+                                                            <font key="font" metaFont="system" size="10"/>
+                                                            <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
+                                                            <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
+                                                        </textFieldCell>
+                                                    </textField>
+                                                    <slider verticalHuggingPriority="750" id="1077">
+                                                        <rect key="frame" x="333" y="11" width="130" height="15"/>
+                                                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                                        <sliderCell key="cell" controlSize="small" continuous="YES" state="on" alignment="left" maxValue="100" doubleValue="50" tickMarkPosition="above" sliderType="linear" id="1088"/>
+                                                        <connections>
+                                                            <action selector="SimpleAccBalAction:" target="494" id="1195"/>
+                                                        </connections>
+                                                    </slider>
+                                                    <textField verticalHuggingPriority="750" id="1074">
+                                                        <rect key="frame" x="48" y="9" width="109" height="17"/>
+                                                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                                        <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="Accompaniment" id="1092">
+                                                            <font key="font" metaFont="systemBold" size="12"/>
+                                                            <color key="textColor" name="textColor" catalog="System" colorSpace="catalog"/>
+                                                            <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
+                                                        </textFieldCell>
+                                                    </textField>
+                                                    <button verticalHuggingPriority="750" id="1080">
+                                                        <rect key="frame" x="3" y="7" width="42" height="19"/>
+                                                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                                        <buttonCell key="cell" type="recessed" title="MUTE" bezelStyle="recessed" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="1081">
+                                                            <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES" changeBackground="YES" changeGray="YES"/>
+                                                            <font key="font" metaFont="systemBold" size="10"/>
+                                                        </buttonCell>
+                                                        <connections>
+                                                            <action selector="SimpleAccMuteAction:" target="494" id="1196"/>
+                                                        </connections>
+                                                    </button>
+                                                    <slider verticalHuggingPriority="750" id="1075">
+                                                        <rect key="frame" x="172" y="9" width="130" height="15"/>
+                                                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                                        <sliderCell key="cell" controlSize="small" continuous="YES" state="on" alignment="left" maxValue="100" doubleValue="50" tickMarkPosition="above" sliderType="linear" id="1091"/>
+                                                        <connections>
+                                                            <action selector="SimpleAccVolAction:" target="494" id="1194"/>
+                                                        </connections>
+                                                    </slider>
+                                                </subviews>
+                                            </view>
+                                            <color key="borderColor" white="0.0" alpha="0.41999999999999998" colorSpace="calibratedWhite"/>
+                                            <color key="fillColor" white="0.0" alpha="0.0" colorSpace="calibratedWhite"/>
+                                        </box>
+                                        <box autoresizesSubviews="NO" title="Box" borderType="line" titlePosition="noTitle" id="1036">
+                                            <rect key="frame" x="11" y="79" width="569" height="40"/>
+                                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                            <view key="contentView">
+                                                <rect key="frame" x="1" y="1" width="567" height="38"/>
+                                                <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                                                <subviews>
+                                                    <textField verticalHuggingPriority="750" id="1107">
+                                                        <rect key="frame" x="48" y="9" width="109" height="17"/>
+                                                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                                        <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="Solo Part" id="1134">
+                                                            <font key="font" metaFont="systemBold" size="12"/>
+                                                            <color key="textColor" name="textColor" catalog="System" colorSpace="catalog"/>
+                                                            <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
+                                                        </textFieldCell>
+                                                    </textField>
+                                                    <button verticalHuggingPriority="750" id="1101">
+                                                        <rect key="frame" x="3" y="7" width="42" height="19"/>
+                                                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                                        <buttonCell key="cell" type="recessed" title="MUTE" bezelStyle="recessed" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="1145">
+                                                            <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES" changeBackground="YES" changeGray="YES"/>
+                                                            <font key="font" metaFont="systemBold" size="10"/>
+                                                        </buttonCell>
+                                                        <connections>
+                                                            <action selector="SimpleSoloMuteAction:" target="494" id="1193"/>
+                                                        </connections>
+                                                    </button>
+                                                    <slider verticalHuggingPriority="750" id="1106">
+                                                        <rect key="frame" x="172" y="11" width="130" height="15"/>
+                                                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                                        <sliderCell key="cell" controlSize="small" continuous="YES" state="on" alignment="left" maxValue="100" doubleValue="50" tickMarkPosition="above" sliderType="linear" id="1135"/>
+                                                        <connections>
+                                                            <action selector="SimpleSoloVolAction:" target="494" id="1191"/>
+                                                        </connections>
+                                                    </slider>
+                                                    <slider verticalHuggingPriority="750" id="1104">
+                                                        <rect key="frame" x="333" y="11" width="130" height="15"/>
+                                                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                                        <sliderCell key="cell" controlSize="small" continuous="YES" state="on" alignment="left" maxValue="100" doubleValue="50" tickMarkPosition="above" sliderType="linear" id="1138"/>
+                                                        <connections>
+                                                            <action selector="SimpleSoloBalAction:" target="494" id="1192"/>
+                                                        </connections>
+                                                    </slider>
+                                                    <textField verticalHuggingPriority="750" id="1103">
+                                                        <rect key="frame" x="320" y="9" width="19" height="17"/>
+                                                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                                        <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="L" id="1141">
+                                                            <font key="font" metaFont="system" size="10"/>
+                                                            <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
+                                                            <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
+                                                        </textFieldCell>
+                                                    </textField>
+                                                    <textField verticalHuggingPriority="750" id="1102">
+                                                        <rect key="frame" x="460" y="9" width="19" height="17"/>
+                                                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                                        <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" alignment="right" title="R" id="1143">
+                                                            <font key="font" metaFont="system" size="10"/>
+                                                            <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
+                                                            <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
+                                                        </textFieldCell>
+                                                    </textField>
+                                                </subviews>
+                                            </view>
+                                            <color key="borderColor" white="0.0" alpha="0.41999999999999998" colorSpace="calibratedWhite"/>
+                                            <color key="fillColor" white="0.0" alpha="0.0" colorSpace="calibratedWhite"/>
+                                        </box>
+                                        <textField verticalHuggingPriority="750" id="1105">
+                                            <rect key="frame" x="391" y="116" width="52" height="17"/>
+                                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                            <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="Balance" id="1136">
+                                                <font key="font" metaFont="system" size="10"/>
+                                                <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
+                                                <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
+                                            </textFieldCell>
+                                        </textField>
+                                        <textField verticalHuggingPriority="750" id="1073">
+                                            <rect key="frame" x="226" y="116" width="52" height="17"/>
+                                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                            <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="Volume" id="1095">
+                                                <font key="font" metaFont="system" size="10"/>
+                                                <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
+                                                <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
+                                            </textFieldCell>
+                                        </textField>
+                                    </subviews>
+                                </view>
+                            </tabViewItem>
+                        </tabViewItems>
+                        <connections>
+                            <outlet property="delegate" destination="1453" id="1454"/>
+                        </connections>
+                    </tabView>
+                    <button verticalHuggingPriority="750" id="1288">
+                        <rect key="frame" x="1183" y="-2" width="82" height="32"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                        <buttonCell key="cell" type="push" title="Save..." bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="1289">
+                            <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
+                            <font key="font" metaFont="system"/>
+                            <connections>
+                                <action selector="SaveRefinementAction:" target="494" id="1294"/>
+                            </connections>
+                        </buttonCell>
+                    </button>
+                    <button verticalHuggingPriority="750" id="1290">
+                        <rect key="frame" x="1059" y="-2" width="124" height="32"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                        <buttonCell key="cell" type="push" title="Export Audio..." bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="1291">
+                            <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
+                            <font key="font" metaFont="system"/>
+                        </buttonCell>
+                        <connections>
+                            <action selector="ExportAudioAction:" target="494" id="1295"/>
+                        </connections>
+                    </button>
+                    <button verticalHuggingPriority="750" id="1292">
+                        <rect key="frame" x="5" y="-2" width="82" height="32"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                        <buttonCell key="cell" type="push" title="Delete" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="1293">
+                            <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
+                            <font key="font" metaFont="system"/>
+                        </buttonCell>
+                        <connections>
+                            <action selector="DeleteRefinementAction:" target="494" id="1296"/>
+                        </connections>
+                    </button>
+                    <textField verticalHuggingPriority="750" id="917">
+                        <rect key="frame" x="17" y="223" width="94" height="17"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                        <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="Go to Measure" id="918">
+                            <font key="font" metaFont="cellTitle"/>
+                            <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
+                            <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
+                        </textFieldCell>
+                    </textField>
+                    <textField toolTip="jump to measure" verticalHuggingPriority="750" id="806">
+                        <rect key="frame" x="116" y="220" width="31" height="22"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                        <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" selectable="YES" editable="YES" sendsActionOnEndEditing="YES" state="on" borderStyle="bezel" drawsBackground="YES" id="807">
+                            <font key="font" metaFont="system"/>
+                            <color key="textColor" name="textColor" catalog="System" colorSpace="catalog"/>
+                            <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
+                        </textFieldCell>
+                        <connections>
+                            <action selector="NavGoToMeas:" target="494" id="808"/>
+                        </connections>
+                    </textField>
+                    <textField verticalHuggingPriority="750" id="1344">
+                        <rect key="frame" x="14" y="248" width="489" height="26"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                        <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="Hello world" id="1345">
+                            <font key="font" metaFont="system"/>
+                            <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
+                            <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
+                        </textFieldCell>
+                    </textField>
+                    <levelIndicator hidden="YES" verticalHuggingPriority="750" id="1353" customClass="LevelMeter">
+                        <rect key="frame" x="20" y="195" width="127" height="16"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                        <levelIndicatorCell key="cell" alignment="left" maxValue="100" warningValue="85" criticalValue="95" levelIndicatorStyle="continuousCapacity" id="1354"/>
+                    </levelIndicator>
+                    <button id="1420">
+                        <rect key="frame" x="536" y="239" width="69" height="50"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                        <buttonCell key="cell" type="square" bezelStyle="shadowlessSquare" image="Music+1-playhead-nav-controls-PLAY-OFF" imagePosition="overlaps" alignment="center" alternateImage="Music+1-playhead-nav-controls-STOP-OFF" imageScaling="proportionallyDown" inset="2" id="1421">
+                            <behavior key="behavior" pushIn="YES" changeContents="YES" lightByContents="YES"/>
+                            <font key="font" metaFont="system"/>
+                        </buttonCell>
+                        <connections>
+                            <action selector="SpectPlayToggle:" target="494" id="1430"/>
+                        </connections>
+                    </button>
+                    <button id="993">
+                        <rect key="frame" x="592" y="239" width="75" height="50"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                        <buttonCell key="cell" type="bevel" bezelStyle="regularSquare" image="Music+1-playhead-nav-controls-RIGHT-OFF" imagePosition="left" alignment="center" alternateImage="Music+1-playhead-nav-controls-RIGHT-ON" imageScaling="proportionallyDown" inset="2" id="1023">
+                            <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
+                            <font key="font" metaFont="system"/>
+                        </buttonCell>
+                        <connections>
+                            <action selector="RefineNextButtonAction:" target="494" id="1215"/>
+                        </connections>
+                    </button>
+                    <button id="994">
+                        <rect key="frame" x="472" y="239" width="77" height="50"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                        <buttonCell key="cell" type="bevel" bezelStyle="regularSquare" image="Music+1-playhead-nav-controls-LEFT-OFF" imagePosition="right" alignment="center" alternateImage="Music+1-playhead-nav-controls-LEFT-ON" imageScaling="proportionallyDown" inset="2" id="1022">
+                            <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
+                            <font key="font" metaFont="system"/>
+                        </buttonCell>
+                        <connections>
+                            <action selector="RefinePrevButtonAction:" target="494" id="1213"/>
+                        </connections>
+                    </button>
+                </subviews>
+            </view>
+            <contentBorderThickness minY="32"/>
+        </window>
+        <customObject id="494" customClass="AppDelegate">
+            <connections>
+                <outlet property="AlignMarkersOutlet" destination="991" id="1436"/>
+                <outlet property="AlignOutlet" destination="991" id="1451"/>
+                <outlet property="ChooseRehearsalOutlet" destination="1247" id="1287"/>
+                <outlet property="DeleteRefinementOutlet" destination="1292" id="1299"/>
+                <outlet property="ExportAudioOutlet" destination="1290" id="1298"/>
+                <outlet property="MainFileMenu" destination="1232" id="1364"/>
+                <outlet property="MainProgramMenuOutlet" destination="1232" id="1363"/>
+                <outlet property="MainVolumeOutlet" destination="1353" id="1355"/>
+                <outlet property="MainWindowOutlet" destination="371" id="1231"/>
+                <outlet property="MarkerCheckOutlet" destination="1228" id="1431"/>
+                <outlet property="MenuRefineAndTrainOutlet" destination="1398" id="1401"/>
+                <outlet property="MenuResetTrainingOutlet" destination="1408" id="1410"/>
+                <outlet property="NoteMarkIncOutlet" destination="943" id="1227"/>
+                <outlet property="NudgeLeftOutlet" destination="986" id="1448"/>
+                <outlet property="NudgeRightOutlet" destination="987" id="1449"/>
+                <outlet property="PieceTitleOutlet" destination="1344" id="1346"/>
+                <outlet property="RefineNextButtonAction" destination="993" id="1214"/>
+                <outlet property="RefineNextButtonOutlet" destination="993" id="1222"/>
+                <outlet property="RefineNudgeLeftOutlet" destination="986" id="1223"/>
+                <outlet property="RefineNudgeRightOutlet" destination="987" id="1224"/>
+                <outlet property="RefinePrevButtonOutlet" destination="994" id="1221"/>
+                <outlet property="RefineUndoAction" destination="992" id="1218"/>
+                <outlet property="RefineUndoOutlet" destination="992" id="1437"/>
+                <outlet property="SaveRefinementOutlet" destination="1288" id="1297"/>
+                <outlet property="SimpleAccBalOutlet" destination="1077" id="1206"/>
+                <outlet property="SimpleAccMuteOutlet" destination="1080" id="1207"/>
+                <outlet property="SimpleAccVolOutlet" destination="1077" id="1205"/>
+                <outlet property="SimpleMarkBalOutlet" destination="1146" id="1209"/>
+                <outlet property="SimpleMarkMuteOutelt" destination="1146" id="1210"/>
+                <outlet property="SimpleMarkMuteOutlet" destination="1146" id="1212"/>
+                <outlet property="SimpleMarkVolOutlet" destination="1151" id="1211"/>
+                <outlet property="SimpleMarkVolumeOutlet" destination="1151" id="1208"/>
+                <outlet property="SimpleSoloBalOutlet" destination="1104" id="1201"/>
+                <outlet property="SimpleSoloMuteOutlet" destination="1101" id="1202"/>
+                <outlet property="SimpleSoloVolOutlet" destination="1106" id="1200"/>
+                <outlet property="SpectPlayToggleOutlet" destination="1421" id="1432"/>
+                <outlet property="SpectWind" destination="594" id="832"/>
+                <outlet property="Spectrogram" destination="594" id="672"/>
+                <outlet property="Tab" destination="936" id="1444"/>
+                <outlet property="TabChooserOutlet" destination="936" id="1445"/>
+                <outlet property="TheMainMenu" destination="1232" id="1407"/>
+                <outlet property="UndoOutlet" destination="992" id="1450"/>
+                <outlet property="window" destination="371" id="532"/>
+            </connections>
+        </customObject>
+        <customObject id="420" customClass="NSFontManager"/>
+        <textField verticalHuggingPriority="750" id="541">
+            <rect key="frame" x="0.0" y="0.0" width="96" height="22"/>
+            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+            <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" selectable="YES" editable="YES" sendsActionOnEndEditing="YES" state="on" borderStyle="bezel" drawsBackground="YES" id="542">
+                <font key="font" metaFont="system"/>
+                <color key="textColor" name="textColor" catalog="System" colorSpace="catalog"/>
+                <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
+            </textFieldCell>
+        </textField>
+        <customObject id="1453" customClass="TabViewController"/>
+    </objects>
+    <resources>
+        <image name="Music+1-playhead-nav-controls-LEFT-OFF" width="53" height="136"/>
+        <image name="Music+1-playhead-nav-controls-LEFT-ON" width="53" height="136"/>
+        <image name="Music+1-playhead-nav-controls-PLAY-OFF" width="123" height="136"/>
+        <image name="Music+1-playhead-nav-controls-RIGHT-OFF" width="53" height="136"/>
+        <image name="Music+1-playhead-nav-controls-RIGHT-ON" width="53" height="136"/>
+        <image name="Music+1-playhead-nav-controls-STOP-OFF" width="123" height="136"/>
+        <image name="RightLeftArrow" width="32" height="32"/>
+        <image name="Screen Shot 2013-02-10 at 2.25.18 PM" width="128" height="128"/>
+        <image name="note-values-dotted-eighth" width="30" height="41"/>
+        <image name="note-values-dotted-quarter" width="30" height="41"/>
+        <image name="note-values-eighth" width="30" height="41"/>
+        <image name="note-values-half" width="30" height="41"/>
+        <image name="note-values-quarter" width="30" height="41"/>
+        <image name="note-values-sixteenth" width="30" height="41"/>
+    </resources>
+</document>

@@ -1,0 +1,16 @@
+feature 0	sig marginal ent = 1.709545	mut info = 0.776852
+	signature 0	 count = 787.071236
+	signature 1	 count = 199.739435
+	signature 2	 count = 202.140866
+	signature 3	 count = 556.413003
+	signature 4	 count = 2463.635947
+feature 1	sig marginal ent = 2.262579	mut info = 0.664907
+	signature 0	 count = 1188.964347
+	signature 1	 count = 981.451490
+	signature 2	 count = 642.805460
+	signature 3	 count = 1102.559032
+	signature 4	 count = 140.219351
+	signature 5	 count = 153.000006
+	signature 6	 count = 0.000000
+	signature 7	 count = 0.000000
+	signature 8	 count = 0.000000
