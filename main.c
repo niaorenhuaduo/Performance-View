@@ -99,6 +99,7 @@ maininit() {
   strcpy(user_dir,"user/"); */
   strcpy(pth,user_dir);
   strcat(pth,"output.txt");  // write output into the user directory
+    
 
 //  freopen("output.txt","w",stdout);
 

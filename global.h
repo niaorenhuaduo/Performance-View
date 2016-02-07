@@ -121,6 +121,12 @@ extern INSTRUMENT_LIST instrument_list;
 extern int spect_wd;
 extern int current_parse_changed_by_hand;
 
+extern float inst_freq[];
+extern int inst_fbin[];
+extern float window[FRAMELEN];
+extern init_window();
+extern float princarg(float phasein);
+
 
 
 

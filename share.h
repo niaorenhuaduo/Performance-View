@@ -428,7 +428,7 @@ typedef struct {
   int num; // total # of sounding notes
   int vel[MAX_SOUNDING_NOTES];   /* inital velocity */
   float age[MAX_SOUNDING_NOTES];  /* age in secs before this "chord" */
-  int snd_nums[MAX_SOUNDING_NOTES];
+  int snd_nums[MAX_SOUNDING_NOTES]; //midi pitch
   int attack[MAX_SOUNDING_NOTES];  /* boolean just started this midi burst? */
   int trill[MAX_SOUNDING_NOTES];  /* boolean just started this midi burst? */
 } SOUND_NUMBERS;

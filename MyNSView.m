@@ -133,6 +133,8 @@ rem_click(int m) {
 #define COLOR_BLUE 1
 #define COLOR_GREEN 2
 #define COLOR_RED 4
+#define COLOR_T 3
+#define COLOR_Q 5
 
 #define MOVING_LINE_COLOR COLOR_BLUE
 
@@ -351,13 +353,13 @@ add_line_to_visible(int column, int color) {
     z[1] = g = (color&2) ? 255 : 0;
     z[0]=  b = (color&4) ? 255 : 0;
     //  for (i=0; i < SPECT_HT; i++) {
-    for (i=RULER_HT; i < SPECT_HT; i++) {
+    for (i=RULER_HT; i < SPECT_HT; i++) { //adds a little space on top for measure markings
     
       //  for (i=0; i < SPECT_HT; i++) {
       //        NSUInteger zColourAry[3] = {r,g,b};
       //[bitmap setPixel:zColourAry atX:(column-scroll_pos) y:i];
            // cptr = (i < RULER_HT) ? black : z;
-            [bitmap setPixel:z atX:(column-scroll_pos) y:i];
+            [bitmap setPixel:z atX:(column-scroll_pos) y:i]; //x //true version
 
       /*  ptr = (Byte *) visible->ScanLine[i] + 3*(column-scroll_pos);
         ptr[0] = r;
@@ -375,6 +377,134 @@ add_line_to_visible(int column, int color) {
     
     
 }
+
+static void
+add_line_to_visible_pitch(int column, int endpos, int color, int freq) {
+    unsigned int r, g, b;
+    int i,width;
+    Byte *ptr;
+    NSUInteger z[3],*cptr;
+    NSUInteger black[3] = {0,0,0};
+    
+    
+    width = spect_wd;
+    if (column < scroll_pos) return;
+    if (column >= scroll_pos+width) return;
+    z[2] = r = (color&1) ? 255 : 0;
+    z[1] = g = (color&2) ? 255 : 0;
+    z[0]=  b = (color&4) ? 255 : 0;
+    
+    double j, k;
+    for (i = column; i < endpos; i++) {
+        [bitmap setPixel:z atX:(i-scroll_pos) y:(SPECT_HT - freq)];
+        
+    }
+
+    NSRect rect  = {column-scroll_pos,0,(endpos - column),SPECT_HT-RULER_HT};
+    
+    [view_self setNeedsDisplayInRect:rect];
+    
+}
+
+
+
+int calc_inst_freq_bin(int pos, int bin) {
+    int inst_bin, offset, inc;
+    unsigned char *ptr1;
+    unsigned char *ptr2;
+    float tp1[FRAMELEN], tp2[FRAMELEN], ph1, ph2, omega, ph_inc, f_inst, i1, i2, r1, r2, c; //FREQDIM is 1024
+
+    inc = 100; //number of samples between first and second frames for phase-based pitch calculation
+
+    offset = BYTES_PER_SAMPLE * pos; //get current sample position in audiodata
+    ptr1 = audiodata + offset;
+    ptr2 = ptr1 + inc;
+    samples2floats(ptr1, tp1, FRAMELEN);
+    samples2floats(ptr2, tp2, FRAMELEN);
+    
+    i1 = i2 = r1 = r2 = 0; //calculate fft for this bin for the chunks starting at ptr1 and ptr2
+    c = 2*PI*bin/freqs;
+    for (int j=0; j<freqs; j++) {
+        i1 += tp1[j] * sinf(c * j) * window[j];
+        i2 += tp2[j] * sinf(c * j) * window[j];
+        r1 += tp1[j] * cosf(c * j) * window[j];
+        r2 += tp2[j] * cosf(c * j) * window[j];
+    }
+
+    omega = 2 * PI * bin * inc / freqs; //expected number of cycles per increment
+    
+    ph1 = atan2f(i1, r1); //get phase increment
+    ph2 = atan2f(i2, r2);
+    ph_inc = omega + princarg(ph2 - ph1 - omega); //add increment between -pi and +pi
+    
+    f_inst = ph_inc * SR / (2 * PI * inc); //actual instantaneous frequency
+    
+    inst_bin = (int) hz2omega(f_inst) / 2; //get bin value. had to divide by 2 because hz2omega assumes 2xframelen
+    return inst_bin;
+}
+
+
+void calc_max_bin(int startpos, int endpos, int fbin) {
+    int max_bin, m, bin, k, width;
+    float ph1, ph2, omega, ph_inc, f_inst, s, c, temp; //FREQDIM is 1024
+    
+    width = spect_wd; //check that note fits completely in window
+    if (startpos < scroll_pos) return;
+    if (endpos >= scroll_pos+width) return;
+    
+    k = max(fbin - 5, 2); //examine bins in range of nominal bin for this note +=5
+    
+    for (int j = startpos; j < endpos; j++) {
+        max_bin = m = 0;
+        
+        for (int i = k; i < k+10; i++) {
+            if (spect_page.ptr[j-scroll_pos][i] > m) {
+                m = spect_page.ptr[j-scroll_pos][i];
+                max_bin = i;
+            }
+            inst_fbin[j] = max_bin;
+        }
+    }
+    for (int j = startpos; j < endpos; j++) {
+        temp = calc_inst_freq_bin(j, inst_fbin[j]); //calculate instantaneous pitch using selected bin
+        inst_fbin[j] = temp;
+    }
+    
+}
+
+
+static void
+add_line_to_inst_pitch(int column, int endpos, int color, int fbin) {
+    unsigned int r, g, b;
+    int i,width;
+    float bin_inst;
+    Byte *ptr;
+    NSUInteger z[3],*cptr;
+    NSUInteger black[3] = {0,0,0};
+    
+    
+    width = spect_wd;
+    if (column < scroll_pos) return;
+    if (column >= scroll_pos+width) return;
+    z[2] = r = (color&1) ? 255 : 0;
+    z[1] = g = (color&2) ? 255 : 0;
+    z[0]=  b = (color&4) ? 255 : 0;
+    
+    init_window(); //window for stft
+    
+    calc_max_bin(column, endpos, fbin); //choose maximum bin in neighborhood of nominal pitch, calculate true frequency
+    
+    double j, k;
+    for (i = column; i < endpos; i++) {
+        [bitmap setPixel:z atX:(i-scroll_pos) y:(SPECT_HT - inst_fbin[i])];
+    }
+    
+    NSRect rect  = {column-scroll_pos,0,1,SPECT_HT-RULER_HT};
+    
+    [view_self setNeedsDisplayInRect:rect];
+    
+}
+
 
 
 
@@ -445,6 +575,32 @@ draw_note_markers(int b) {
     }
     
 }
+
+static void
+draw_pitch(int b) {
+    int i,j,s,e,color,f,midi,width;
+    float fmidi,fbin;
+    
+    for (j=firstnote; j < lastnote; j++) {
+        
+        if ((b == 1) && (show_index(j) == 0)) continue;
+
+        s = score.solo.note[j].frames; //starting position
+        e = score.solo.note[j+1].frames; //ending position
+        midi = score.solo.note[j].snd_notes.snd_nums[0]; //midi pitch
+        
+        color = COLOR_Q | (f*COLOR_T);
+        
+        fmidi = (int) (pow(2,((midi - 69)/12.0)) * 440);
+        fbin = (int) hz2omega(fmidi);
+
+        if (b) add_line_to_visible_pitch(s, e, color, fbin);
+        if (b) add_line_to_inst_pitch(s, e, color+1, fbin);
+        
+    }
+    
+}
+
 
 
 static void
@@ -523,6 +679,7 @@ void
 unhighlight_notes() {
     rem_clicks();
     draw_note_markers(0);
+    draw_pitch(0);
 }
 
 
@@ -703,7 +860,7 @@ highlight_neighbor_note(int inc) {
     linepos = (cur_nt == firstnote-1) ? 0 : score.solo.note[cur_nt].frames;
     c = line_color(cur_nt);
     scroll_if_needed(linepos , inc);
-    add_line_to_visible(linepos,c); 
+    add_line_to_visible(linepos,c);
     if (cur_nt >= firstnote && cur_nt <= lastnote) {
       for (i=0;i < score.solo.note[cur_nt].snd_notes.num; i++) {
         //     draw_piano_key(score.solo.note[cur_nt].snd_notes.snd_nums[i],1);
@@ -721,6 +878,7 @@ highlight_solo_notes() {
     
     add_clicks();
     draw_note_markers(1);
+    draw_pitch(1);
     highlight_neighbor_note(0);  //(increment = 0) add text pos and green for current note
     // xxx this makes program crash after live performance sometimes
     draw_ruler();
@@ -2042,6 +2200,7 @@ abcde() {
     make_spect_visible();
     [view_self markersChange];
     draw_ruler();
+    draw_pitch(1);
     
     image_set = 1;
    // [self setNeedsDisplay:YES];
@@ -2382,7 +2541,7 @@ PAGE_STAFF top_line,bot_line;  // what is showing on the
   //  [self show_the_spect];
     draw_note_markers(clicks_in);
     f0 = (cur_nt < firstnote) ? 0 : score.solo.note[cur_nt].frames;
-    add_line_to_visible(f0,COLOR_GREEN); 
+    add_line_to_visible(f0,COLOR_GREEN);
 }
 
 -(void) clear_spect {

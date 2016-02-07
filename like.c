@@ -22,12 +22,16 @@
 
 
 
-
 #define QUANTA 10
 #define MAX_CELLS 20
 #define UNSET  HUGE_VAL
 
 #define MAX_REC_NUM 100
+
+#define max(a,b) \
+({ __typeof__ (a) _a = (a); \
+__typeof__ (b) _b = (b); \
+_a > _b ? _a : _b; })
 
 
 
@@ -388,6 +392,11 @@ init_like() {
   init_beta();
 }
 
+float princarg(float phasein) {
+    float a = phasein / (2 * PI);
+    int k = round(a); //??? check that rounds down not up
+    return (phasein - k * 2 * PI);
+}
 
 
 void
@@ -407,7 +416,7 @@ create_spect(float *d, float *s) {  /* data has FRAMELEN pts */
 
 
   s[0] = square(temp[0]);
-  for (i=1; i < freqs; i++) s[i] = (square(temp[2*i]) + square(temp[2*i+1]));
+  for (i=1; i < freqs; i++) s[i] = (square(temp[2*i]) + square(temp[2*i+1])); //temp fft stored as re - im - re - im ...
 
 
 #ifdef JAN_BERAN
@@ -448,7 +457,11 @@ setspect() {
   float temp[FREQDIM],m,x,tp[FRAMELEN];
   int i,t,offset;
   unsigned char *ptr;
-  
+    
+    unsigned char *ptr1;
+    unsigned char *ptr2;
+    int inc = 100; //number of samples between frame 1 and 2 for phase-based pitch calculation
+    float tp1[FRAMELEN], tp2[FRAMELEN];
 
   //  printf("setting spect token = %d\n",token);
   
@@ -466,7 +479,7 @@ setspect() {
 #endif
     
 
-  create_spect(data,spect); //CF:  creates the spectrum 
+  create_spect(data,spect); //CF:  creates the spectrum. spect contains squared modulus
 
 
 #ifdef ATTACK_SPECT
@@ -476,7 +489,7 @@ setspect() {
 #ifdef VIOLIN_EXPERIMENT
   for (i=0; i < freqs; i++) spect[i] *= 10*i/(float)freqs;
 #endif
-  return;
+  return; //function returns here *?*
 
 
   for (i=0; i < FRAMELEN; i++) temp[i] = data[i];
@@ -499,7 +512,7 @@ setspect() {
   for (i=0; i < freqs; i++) spect[i] /= m;
   for (i=0; i < freqs; i++) spect[i] = (spect[i] <  .005) ? 0 : log(spect[i]/.005);  */
 }
-  
+
 
 
 

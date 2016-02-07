@@ -155,7 +155,7 @@
 //#define MAX_ACCOMPANIMENT_NOTES 4000     /* maximum accompaniment notes in note list */
 #define MAX_SOLO_NOTES 5000 //2000     /* maximum accompaniment notes in note list */
 //#define MAX_POLY_SOLO_EVENTS 20000     /* maximum accompaniment notes in note list */
-#define PI       3.14159  
+#define PI       3.1415927  
 /*#define MAXAUDIO 6000000  // 1 meg is about a minute  */
   /* if using graph many nodes required in backward direction of baum selch */
 #define SCALE     .2  /* relates mean to std  3std's gets most mass  */
@@ -536,7 +536,12 @@ typedef struct  {
    float clickmean;    /* mean length in tokens until next reference point */ //CF:  not used
    int   count;        /* mean and std based on count observations */  //CF:  not used?
    int   num;          /* index into sol */  //CF:  not used
-  int   trill;         /* the upper midi pitch of the trill (0 means no trill) */ //CF:  not used
+  int   trill;
+    
+    
+    
+    
+    /* the upper midi pitch of the trill (0 means no trill) */ //CF:  not used
    float realize;      /* frame in which this note was realized this (real-time)  iteration */ //CF:  for logging only
   int frames;  /* maybe this is redundant with realize */ //CF:  time the solo note was played (in most recent performance)
   int saved_frames;  /* for gauss parse */ //CF:  not used

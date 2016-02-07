@@ -47,7 +47,9 @@ float restspect[FREQDIM/2];
 float orchestra_spect[FREQDIM/2];
 float unscaled_orchestra_spect[FREQDIM/2];
 float *orch_data_frame;   /* one frame of orchestra data */
-unsigned char *audiodata;  
+unsigned char *audiodata;
+float inst_freq[5000];
+int inst_fbin[5000];
 char scoretag[500] = {0};
 TEMPO_LIST tempo_list;
 int stop_playing_flag=1;

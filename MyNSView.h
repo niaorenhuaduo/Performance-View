@@ -52,5 +52,7 @@ typedef struct {
 
 @end
 
+
+
 MyNSView *view_self;
 
