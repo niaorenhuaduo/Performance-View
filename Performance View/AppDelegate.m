@@ -734,7 +734,7 @@ init_incs() {
         s = [_NoteMarkIncOutlet itemTitleAtIndex:i];
         if ([s isEqualToString:@"all"]) { inc_vals.inc[i].num = 0; inc_vals.inc[i].den = 1; continue;}
         if ([s isEqualToString:@"bar line"]) {
-            inc_vals.inc[i].num = 1; inc_vals.inc[i].den = 1;  spect_inc = inc_vals.inc[i]; inc_vals.cur = i; continue;} // initialize to this.
+            inc_vals.inc[i].num = 0; inc_vals.inc[i].den = 1;  spect_inc = inc_vals.inc[i]; inc_vals.cur = i; continue;} // initialize to this.
         if ([s isEqualToString:@"half-note"]) { inc_vals.inc[i].num = 1; inc_vals.inc[i].den = 2; continue;}
         if ([s isEqualToString:@"quarter-note"]) { inc_vals.inc[i].num = 1; inc_vals.inc[i].den = 4; continue;}
         if ([s isEqualToString:@"eighth-note"]) { inc_vals.inc[i].num = 1; inc_vals.inc[i].den = 8; continue;}

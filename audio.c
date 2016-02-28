@@ -133,6 +133,7 @@ samples2data() {
 
 }
 
+
 int
 read_audio(char *af) {
   FILE *fp;
@@ -163,6 +164,7 @@ write_audio(char *af) {
   fwrite(audiodata,frames*TOKENLEN,BYTES_PER_SAMPLE,fp);
   fclose(fp);
 }
+
 
 
 int

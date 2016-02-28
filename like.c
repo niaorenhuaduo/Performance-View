@@ -457,11 +457,6 @@ setspect() {
   float temp[FREQDIM],m,x,tp[FRAMELEN];
   int i,t,offset;
   unsigned char *ptr;
-    
-    unsigned char *ptr1;
-    unsigned char *ptr2;
-    int inc = 100; //number of samples between frame 1 and 2 for phase-based pitch calculation
-    float tp1[FRAMELEN], tp2[FRAMELEN];
 
   //  printf("setting spect token = %d\n",token);
   

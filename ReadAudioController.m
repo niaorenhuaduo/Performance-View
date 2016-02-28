@@ -262,7 +262,7 @@ display_range_string() {
     [_NewReadAudioWindow close];
     [view_self displaySpect];
     
-    
+    resynth_solo(48000);
     display_range_string();
     display_take_string();
     

@@ -123,9 +123,12 @@ extern int current_parse_changed_by_hand;
 
 extern float inst_freq[];
 extern int inst_fbin[];
+extern float inst_amp[];
 extern float window[FRAMELEN];
 extern init_window();
 extern float princarg(float phasein);
+extern unsigned char *synth_pitch;
+extern int play_synthesis;
 
 
 

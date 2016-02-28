@@ -60,16 +60,18 @@ makepitches() {
 
 
 alloc_audio_buff() {
-  extern unsigned char *audiodata;
-  
-  audiodata = (unsigned char*) malloc(MAXAUDIO);
-  if (audiodata == NULL) printf("couldn't allocate audio data buffer\n");
-  //  printf("max frames = %d\n",MAX_FRAMES); exit(0);
+    extern unsigned char *audiodata;
+    
+    audiodata = (unsigned char*) malloc(MAXAUDIO);
+    if (audiodata == NULL) printf("couldn't allocate audio data buffer\n");
+    synth_pitch = (unsigned char*) malloc(MAXAUDIO);
+    if (synth_pitch == NULL) printf("couldn't allocate synth pitch buffer\n");
+    //  printf("max frames = %d\n",MAX_FRAMES); exit(0);
 #ifdef ORCHESTRA_EXPERIMENT
-  orchdata = (unsigned char*) malloc(MAXAUDIO);
-  if (orchdata == NULL) printf("couldn't allocate orchdata buffer\n");
+    orchdata = (unsigned char*) malloc(MAXAUDIO);
+    if (orchdata == NULL) printf("couldn't allocate orchdata buffer\n");
 #endif
-	
+    
 
 }
 

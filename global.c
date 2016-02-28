@@ -50,6 +50,9 @@ float *orch_data_frame;   /* one frame of orchestra data */
 unsigned char *audiodata;
 float inst_freq[5000];
 int inst_fbin[5000];
+float inst_amp[5000];
+int play_synthesis = 0;
+unsigned char *synth_pitch;
 char scoretag[500] = {0};
 TEMPO_LIST tempo_list;
 int stop_playing_flag=1;

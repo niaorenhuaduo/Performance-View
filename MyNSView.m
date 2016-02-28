@@ -1,4 +1,6 @@
+//metasynth, graphic to sound. rtcmix. data sonification
 //
+
 //  MyNSView.m
 //  TestApp
 //
@@ -16,6 +18,7 @@
 //#include "Piano.h"
 //#include "PatControl.h"
 #include <dirent.h>
+#include "audio.h"
 
 
 #define ON_SOLO 0
@@ -138,7 +141,48 @@ rem_click(int m) {
 
 #define MOVING_LINE_COLOR COLOR_BLUE
 
+void synth_overtones(float f, float a, float t, int num, float scale, int index) {
+    float wav = 0;
+    unsigned char temp2;
+    for (int i = 1; i <= num; i++) {
+        wav += sinf(2 * PI * i * f * t);
+    }
+    float temp = a * wav * scale;
+    a = 0.01;
+    float2sample(a * wav * scale, synth_pitch + index*2);
+    printf("\nsynth_pitch: %f", temp);
+    
+}
 
+void resynth_solo(int sr) { //linear interpolation
+    char stump[500];
+    int offset1, offset2, overtone_num = 3;
+    int startframe = score.solo.note[1].frames;
+    float fundamental, amp, time, scale = 10;
+    for (int i = startframe; i < 5000-1; i++) { //5000 is length of inst_freq[]
+        offset1 =  max(( (i - startframe)*SKIPLEN - FRAMELEN)*BYTES_PER_SAMPLE,0);
+        offset2 =  max(( (i - startframe + 1)*SKIPLEN - FRAMELEN)*BYTES_PER_SAMPLE,0);
+        offset1 = (float) offset1 * sr / 8000;         //change 8000 k to sr = 48000k
+        offset2 = (float) offset2 * sr / 8000;
+        for (int j = offset1; j < offset2; j++) {
+            //linearly interpolate pitch
+            fundamental = inst_freq[i] + (inst_freq[i+1] - inst_freq[i])*((float) (j-offset1)/(offset2-offset1));
+            //linearly interpolate amplitude
+            amp = inst_amp[i] + (inst_amp[i+1] - inst_amp[i])*((float) (j-offset1)/(offset2-offset1));
+            time = (float) j/sr;
+            synth_overtones(fundamental, amp, time, overtone_num, scale, j); //calculate value and write it as unsigned char to synth_pitch array
+            
+        }
+    }
+    
+    FILE *fp;
+    strcpy(stump,audio_data_dir);
+    strcat(stump, "synth_pitch");
+    fp = fopen(stump, "w");
+    fwrite(synth_pitch, frames*TOKENLEN,BYTES_PER_SAMPLE, fp);
+    fclose(fp);
+    play_synthesis = 1;
+}
 
 
 static int
@@ -409,21 +453,22 @@ add_line_to_visible_pitch(int column, int endpos, int color, int freq) {
 
 
 int calc_inst_freq_bin(int pos, int bin) {
-    int inst_bin, offset, inc;
+    int offset, inc;
     unsigned char *ptr1;
     unsigned char *ptr2;
-    float tp1[FRAMELEN], tp2[FRAMELEN], ph1, ph2, omega, ph_inc, f_inst, i1, i2, r1, r2, c; //FREQDIM is 1024
+    float inst_bin, tp1[FRAMELEN], tp2[FRAMELEN], ph1, ph2, omega, ph_inc, i1, i2, r1, r2, c; //FREQDIM is 1024
 
     inc = 100; //number of samples between first and second frames for phase-based pitch calculation
-
-    offset = BYTES_PER_SAMPLE * pos; //get current sample position in audiodata
+    
+    offset = max(( (pos+1)*SKIPLEN - FRAMELEN)*BYTES_PER_SAMPLE,0);
+    
     ptr1 = audiodata + offset;
     ptr2 = ptr1 + inc;
     samples2floats(ptr1, tp1, FRAMELEN);
     samples2floats(ptr2, tp2, FRAMELEN);
     
     i1 = i2 = r1 = r2 = 0; //calculate fft for this bin for the chunks starting at ptr1 and ptr2
-    c = 2*PI*bin/freqs;
+    c = 2*PI*bin/freqs; //FREQDIM??
     for (int j=0; j<freqs; j++) {
         i1 += tp1[j] * sinf(c * j) * window[j];
         i2 += tp2[j] * sinf(c * j) * window[j];
@@ -431,16 +476,16 @@ int calc_inst_freq_bin(int pos, int bin) {
         r2 += tp2[j] * cosf(c * j) * window[j];
     }
 
-    omega = 2 * PI * bin * inc / freqs; //expected number of cycles per increment
+    omega = 2 * PI * bin * inc / FREQDIM; //expected number of cycles per increment
     
     ph1 = atan2f(i1, r1); //get phase increment
     ph2 = atan2f(i2, r2);
+    float phtemp = princarg(ph2 - ph1 - omega);
     ph_inc = omega + princarg(ph2 - ph1 - omega); //add increment between -pi and +pi
-    
-    f_inst = ph_inc * SR / (2 * PI * inc); //actual instantaneous frequency
-    
-    inst_bin = (int) hz2omega(f_inst) / 2; //get bin value. had to divide by 2 because hz2omega assumes 2xframelen
-    return inst_bin;
+    inst_freq[pos] = ph_inc * (float) SR / (2 * PI * inc); //actual instantaneous frequency
+    float tempp = inst_freq[pos];
+    inst_bin = hz2omega(inst_freq[pos]); //get bin value. had to divide by 2 because hz2omega assumes 2xframelen
+    return (int) inst_bin;
 }
 
 
@@ -455,19 +500,21 @@ void calc_max_bin(int startpos, int endpos, int fbin) {
     k = max(fbin - 5, 2); //examine bins in range of nominal bin for this note +=5
     
     for (int j = startpos; j < endpos; j++) {
-        max_bin = m = 0;
-        
+        max_bin = m = -1;
+        printf("\n spect page");
         for (int i = k; i < k+10; i++) {
-            if (spect_page.ptr[j-scroll_pos][i] > m) {
-                m = spect_page.ptr[j-scroll_pos][i];
+            printf("\t%d", (int) spect_page.ptr[j-scroll_pos][SPECT_HT-i]);
+            if (spect_page.ptr[j-scroll_pos][SPECT_HT-i] > m) {
+                m = spect_page.ptr[j-scroll_pos][SPECT_HT-i];
                 max_bin = i;
             }
             inst_fbin[j] = max_bin;
         }
+        
     }
     for (int j = startpos; j < endpos; j++) {
-        temp = calc_inst_freq_bin(j, inst_fbin[j]); //calculate instantaneous pitch using selected bin
-        inst_fbin[j] = temp;
+        inst_fbin[j] = calc_inst_freq_bin(j, inst_fbin[j]); //calculate instantaneous pitch using selected bin
+        float tempp = inst_fbin[j];
     }
     
 }
@@ -497,6 +544,15 @@ add_line_to_inst_pitch(int column, int endpos, int color, int fbin) {
     double j, k;
     for (i = column; i < endpos; i++) {
         [bitmap setPixel:z atX:(i-scroll_pos) y:(SPECT_HT - inst_fbin[i])];
+    }
+    
+    //temp: add amplitude to plot
+    color = color - 2;
+    z[2] = r = (color&1) ? 255 : 0;
+    z[1] = g = (color&2) ? 255 : 0;
+    z[0]=  b = (color&4) ? 255 : 0;
+    for (i = column; i < endpos; i++) {
+        [bitmap setPixel:z atX:(i-scroll_pos) y:(SPECT_HT - 100*inst_amp[i])];
     }
     
     NSRect rect  = {column-scroll_pos,0,1,SPECT_HT-RULER_HT};
@@ -576,6 +632,47 @@ draw_note_markers(int b) {
     
 }
 
+void calculate_amplitude(startframe, endframe) {
+    unsigned char *temp;
+    int offset;
+    float amp;
+    for (int j = startframe; j < endframe; j++) {
+        offset =  max(( (j+1)*SKIPLEN - FRAMELEN)*BYTES_PER_SAMPLE,0); //won't this be one skiplen too far back?
+        temp =  audiodata + offset;
+        samples2floats(temp, data, FRAMELEN);
+        inst_amp[j] = 0;
+        for (int i = 0; i < FRAMELEN; i++) { //sum of squares
+            inst_amp[j] += data[i]*data[i];
+        }
+    }
+    FILE *fp;
+    fp = fopen("/Users/apple/Dropbox/Music informatics/Performance-View/user/audio/inst_amp", "w");
+    fwrite(inst_amp, sizeof(float), 4500, fp);
+    fclose(fp);
+}
+
+void calculate_amplitude2(startframe, endframe) { //delete this one: it takes the max value
+    unsigned char *temp;
+    int offset;
+    float max_amp;
+    for (int j = startframe; j < endframe; j++) {
+        offset =  max(( (j+1)*SKIPLEN - FRAMELEN)*BYTES_PER_SAMPLE,0); //won't this be one skiplen too far back?
+        temp =  audiodata + offset;
+        samples2floats(temp, data, FRAMELEN);
+        max_amp = -1;
+        for (int i = 0; i < FRAMELEN; i++) {
+            if (data[i] > max_amp) {
+                max_amp = data[i];
+            }
+        }
+        inst_amp[j] = max_amp;
+    }
+    FILE *fp;
+    fp = fopen("/Users/apple/Dropbox/Music informatics/Performance-View/user/audio/inst_amp", "w");
+    fwrite(inst_amp, sizeof(float), 4500, fp);
+    fclose(fp);
+}
+
 static void
 draw_pitch(int b) {
     int i,j,s,e,color,f,midi,width;
@@ -593,9 +690,13 @@ draw_pitch(int b) {
         
         fmidi = (int) (pow(2,((midi - 69)/12.0)) * 440);
         fbin = (int) hz2omega(fmidi);
+        
+        calculate_amplitude(s, e);
 
         if (b) add_line_to_visible_pitch(s, e, color, fbin);
         if (b) add_line_to_inst_pitch(s, e, color+1, fbin);
+        
+        
         
     }
     
@@ -879,6 +980,7 @@ highlight_solo_notes() {
     add_clicks();
     draw_note_markers(1);
     draw_pitch(1);
+    resynth_solo(48000);
     highlight_neighbor_note(0);  //(increment = 0) add text pos and green for current note
     // xxx this makes program crash after live performance sometimes
     draw_ruler();
@@ -1416,32 +1518,42 @@ init_pluck() {
 }
 
 
-
 static void
 buffer_hires_audio() {
-  char stump[500];
-  int f,i,j,b,n;
-
-
-
-  if (hires_solo_fp != NULL)
-      fclose(hires_solo_fp);
-  strcpy(stump,audio_data_dir);
-  strcat(stump,current_examp);
-  strcat(stump,".48k");
-  hires_solo_fp = fopen(stump,"rb");
-  //  if (hires_solo_fp == NULL) hires_solo_fp = fopen(HIRES_OUT_NAME,"rb");
-  if (hires_solo_fp == NULL) { is_hires_audio = 0; return; }
-  is_hires_audio = 1;
-  fseek(hires_solo_fp,start_play_frame_num*SKIPLEN*IO_FACTOR*BYTES_PER_SAMPLE,SEEK_SET);  
-  if (hires_orch_fp != NULL) fclose(hires_orch_fp);
-  strcpy(stump,audio_data_dir);
-  strcat(stump,current_examp);
-  strcat(stump,".48o");
-  hires_orch_fp = NULL;
-  hires_orch_fp = fopen(stump,"rb");
-  if (hires_orch_fp == NULL) { printf("yaya couldn't open %s\n",stump); return; /*exit(0); */}
-  fseek(hires_orch_fp,start_play_frame_num*SKIPLEN*IO_FACTOR*BYTES_PER_SAMPLE,SEEK_SET);  
+    char stump[500];
+    int f,i,j,b,n;
+    
+    if (hires_solo_fp != NULL)
+        fclose(hires_solo_fp);
+    strcpy(stump,audio_data_dir);
+    
+    if (play_synthesis == 1) {
+        strcat(stump, "synth_pitch");
+    }
+    else {
+        strcat(stump,current_examp);
+        strcat(stump,".48k");
+    }
+    
+    hires_solo_fp = fopen(stump,"rb");
+    //  if (hires_solo_fp == NULL) hires_solo_fp = fopen(HIRES_OUT_NAME,"rb");
+    if (hires_solo_fp == NULL) { is_hires_audio = 0; return; }
+    is_hires_audio = 1;
+    fseek(hires_solo_fp,start_play_frame_num*SKIPLEN*IO_FACTOR*BYTES_PER_SAMPLE,SEEK_SET);
+    if (hires_orch_fp != NULL)
+        fclose(hires_orch_fp);
+    strcpy(stump,audio_data_dir);
+    if(play_synthesis == 1) {
+        strcat(stump, "silent_orchestra");
+    }
+    else {
+        strcat(stump,current_examp);
+        strcat(stump,".48o");
+    }
+    hires_orch_fp = NULL;
+    hires_orch_fp = fopen(stump,"rb");
+    if (hires_orch_fp == NULL) { printf("yaya couldn't open %s\n",stump); return; /*exit(0); */}
+    fseek(hires_orch_fp,start_play_frame_num*SKIPLEN*IO_FACTOR*BYTES_PER_SAMPLE,SEEK_SET);
 }
 
 
@@ -1494,7 +1606,7 @@ fill_read_buffer(READ_BUFFER *rb) {
 
   if (rb->seam == rb->cur && rb->is_empty == 0) return; // buffer full
   do { 
-    d = fread(rb->buff + rb->seam,1,1,rb->fp);  
+    d = fread(rb->buff + rb->seam,1,1,rb->fp);
     if (d == 0) rb->buff[rb->seam] = 0;  // always fill with something even if file done
     (rb->seam)++;
     if (rb->seam == READ_BUFFER_SIZE) rb->seam = 0;
