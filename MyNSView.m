@@ -144,11 +144,13 @@ rem_click(int m) {
 void synth_overtones(float f, float a, float t, int num, float scale, int index) {
     float wav = 0;
     unsigned char temp2;
+    //samp += (0.001/j) * sinf(j*(440+change) * (2 * 3.14159) * (float) i / SR + (j * 0.1));
+
     for (int i = 1; i <= num; i++) {
         wav += sinf(2 * PI * i * f * t);
     }
-    float temp = a * wav * scale;
     a = 0.01;
+    float temp = a * wav * scale;
     float2sample(a * wav * scale, synth_pitch + index*2);
     printf("\nsynth_pitch: %f", temp);
     
@@ -159,11 +161,13 @@ void resynth_solo(int sr) { //linear interpolation
     int offset1, offset2, overtone_num = 3;
     int startframe = score.solo.note[1].frames;
     float fundamental, amp, time, scale = 10;
-    for (int i = startframe; i < 5000-1; i++) { //5000 is length of inst_freq[]
-        offset1 =  max(( (i - startframe)*SKIPLEN - FRAMELEN)*BYTES_PER_SAMPLE,0);
-        offset2 =  max(( (i - startframe + 1)*SKIPLEN - FRAMELEN)*BYTES_PER_SAMPLE,0);
-        offset1 = (float) offset1 * sr / 8000;         //change 8000 k to sr = 48000k
-        offset2 = (float) offset2 * sr / 8000;
+    for (int i = startframe; i < 700; i++) { //5000 is length of inst_freq[]
+        //offset1 =  max(( (i - startframe + 1)*SKIPLEN - FRAMELEN)*BYTES_PER_SAMPLE,0);
+        //offset2 =  max(( (i - startframe + 2)*SKIPLEN - FRAMELEN)*BYTES_PER_SAMPLE,0);
+        offset1 = (i - startframe) * SKIPLEN;
+        offset2 = (i+1 - startframe) * SKIPLEN;
+        offset1 = offset1 * sr / SR;         //change 8000 k to sr = 48000k
+        offset2 = offset2 * sr / SR;
         for (int j = offset1; j < offset2; j++) {
             //linearly interpolate pitch
             fundamental = inst_freq[i] + (inst_freq[i+1] - inst_freq[i])*((float) (j-offset1)/(offset2-offset1));
@@ -171,10 +175,8 @@ void resynth_solo(int sr) { //linear interpolation
             amp = inst_amp[i] + (inst_amp[i+1] - inst_amp[i])*((float) (j-offset1)/(offset2-offset1));
             time = (float) j/sr;
             synth_overtones(fundamental, amp, time, overtone_num, scale, j); //calculate value and write it as unsigned char to synth_pitch array
-            
         }
     }
-    
     FILE *fp;
     strcpy(stump,audio_data_dir);
     strcat(stump, "synth_pitch");
@@ -463,28 +465,31 @@ int calc_inst_freq_bin(int pos, int bin) {
     offset = max(( (pos+1)*SKIPLEN - FRAMELEN)*BYTES_PER_SAMPLE,0);
     
     ptr1 = audiodata + offset;
-    ptr2 = ptr1 + inc;
+    ptr2 = ptr1 + inc*2; //advance by 2 unsigned char per sample in audiodata
     samples2floats(ptr1, tp1, FRAMELEN);
     samples2floats(ptr2, tp2, FRAMELEN);
+    /*char * name = "/Users/apple/Documents/test_frame";
+    FILE *fp = fopen(name , "wb");
+    fwrite(tp1, freqs, sizeof(float), fp);
+    fclose(fp);*/
     
     i1 = i2 = r1 = r2 = 0; //calculate fft for this bin for the chunks starting at ptr1 and ptr2
-    c = 2*PI*bin/freqs; //FREQDIM??
+    c = 2*PI*bin/freqs;
     for (int j=0; j<freqs; j++) {
-        i1 += tp1[j] * sinf(c * j) * window[j];
-        i2 += tp2[j] * sinf(c * j) * window[j];
+        i1 -= tp1[j] * sinf(c * j) * window[j];
+        i2 -= tp2[j] * sinf(c * j) * window[j];
         r1 += tp1[j] * cosf(c * j) * window[j];
         r2 += tp2[j] * cosf(c * j) * window[j];
     }
-
-    omega = 2 * PI * bin * inc / FREQDIM; //expected number of cycles per increment
+    omega = 2 * PI * bin * inc / freqs; //expected number of cycles per increment
     
     ph1 = atan2f(i1, r1); //get phase increment
     ph2 = atan2f(i2, r2);
-    float phtemp = princarg(ph2 - ph1 - omega);
+    //float phtemp = princarg(ph2 - ph1 - omega);
     ph_inc = omega + princarg(ph2 - ph1 - omega); //add increment between -pi and +pi
     inst_freq[pos] = ph_inc * (float) SR / (2 * PI * inc); //actual instantaneous frequency
     float tempp = inst_freq[pos];
-    inst_bin = hz2omega(inst_freq[pos]); //get bin value. had to divide by 2 because hz2omega assumes 2xframelen
+    inst_bin = hz2omega(inst_freq[pos]) / 2; //get bin value. had to divide by 2 because hz2omega assumes 2xframelen
     return (int) inst_bin;
 }
 
@@ -496,13 +501,12 @@ void calc_max_bin(int startpos, int endpos, int fbin) {
     width = spect_wd; //check that note fits completely in window
     if (startpos < scroll_pos) return;
     if (endpos >= scroll_pos+width) return;
-    
     k = max(fbin - 5, 2); //examine bins in range of nominal bin for this note +=5
-    
+    k = 3;
     for (int j = startpos; j < endpos; j++) {
         max_bin = m = -1;
         printf("\n spect page");
-        for (int i = k; i < k+10; i++) {
+        for (int i = k; i < k+511; i++) {
             printf("\t%d", (int) spect_page.ptr[j-scroll_pos][SPECT_HT-i]);
             if (spect_page.ptr[j-scroll_pos][SPECT_HT-i] > m) {
                 m = spect_page.ptr[j-scroll_pos][SPECT_HT-i];
@@ -677,6 +681,7 @@ static void
 draw_pitch(int b) {
     int i,j,s,e,color,f,midi,width;
     float fmidi,fbin;
+    
     
     for (j=firstnote; j < lastnote; j++) {
         

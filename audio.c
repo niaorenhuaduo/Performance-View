@@ -165,6 +165,21 @@ write_audio(char *af) {
   fclose(fp);
 }
 
+void create_test_audiodata() {
+    float samp;
+    int change;
+    for(int i = 0; i < 800000; i++)
+    {
+        samp = 0;
+        change =  i* (float) 10/8000;
+        change = 0;
+        for (int j = 1; j <= 1; j++) {
+            samp += (0.001/j) * sinf(j*(440+change) * (2 * 3.14159) * (float) i / SR + (j * 0.1));
+        }
+        float2sample(samp, audiodata + 2*i);
+    }
+    
+}
 
 
 int
@@ -197,6 +212,7 @@ readaudio() {
     
   if (b == MAXAUDIO) { printf("%s too long\n",audio_file); exit(0); }
   fclose(fp);
+    create_test_audiodata();
 
   /*  fd = open(audio_file,0);
   if (fd == -1) { printf("can't open %s\n",audio_file); return(0); }

@@ -202,6 +202,7 @@ hz2omega(float hz) {
   return(FREQDIM*hz/(float) SR);
 }
 
+
 /*float 
 hz2omega(hz) 
      float hz; {
