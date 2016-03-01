@@ -166,16 +166,16 @@ write_audio(char *af) {
 }
 
 void create_test_audiodata() {
-    float samp;
-    int change;
+    float samp, freq;
     for(int i = 0; i < 800000; i++)
     {
         samp = 0;
-        change =  i* (float) 10/8000;
-        change = 0;
-        for (int j = 1; j <= 1; j++) {
-            samp += (0.001/j) * sinf(j*(440+change) * (2 * 3.14159) * (float) i / SR + (j * 0.1));
+        freq = 220 * powf(2, (float) i/800000);
+        freq = 440;
+        for (int j = 1; j <= 5; j++) {
+            samp += ((float) 0.001/j) * sinf((2 * 3.14159) * j* freq * (float) i / SR + (j * 0.1));
         }
+        
         float2sample(samp, audiodata + 2*i);
     }
     

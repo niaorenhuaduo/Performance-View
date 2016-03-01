@@ -143,13 +143,12 @@ rem_click(int m) {
 
 void synth_overtones(float f, float a, float t, int num, float scale, int index) {
     float wav = 0;
-    unsigned char temp2;
     //samp += (0.001/j) * sinf(j*(440+change) * (2 * 3.14159) * (float) i / SR + (j * 0.1));
 
     for (int i = 1; i <= num; i++) {
-        wav += sinf(2 * PI * i * f * t);
+        wav += sinf(2 * PI * i * f * t)*(float) 1/(num*num);
     }
-    a = 0.01;
+    a = 0.7;
     float temp = a * wav * scale;
     float2sample(a * wav * scale, synth_pitch + index*2);
     printf("\nsynth_pitch: %f", temp);
@@ -158,12 +157,10 @@ void synth_overtones(float f, float a, float t, int num, float scale, int index)
 
 void resynth_solo(int sr) { //linear interpolation
     char stump[500];
-    int offset1, offset2, overtone_num = 3;
+    int offset1, offset2, overtone_num = 4;
     int startframe = score.solo.note[1].frames;
-    float fundamental, amp, time, scale = 10;
+    float fundamental, amp, time, scale = 1;
     for (int i = startframe; i < 700; i++) { //5000 is length of inst_freq[]
-        //offset1 =  max(( (i - startframe + 1)*SKIPLEN - FRAMELEN)*BYTES_PER_SAMPLE,0);
-        //offset2 =  max(( (i - startframe + 2)*SKIPLEN - FRAMELEN)*BYTES_PER_SAMPLE,0);
         offset1 = (i - startframe) * SKIPLEN;
         offset2 = (i+1 - startframe) * SKIPLEN;
         offset1 = offset1 * sr / SR;         //change 8000 k to sr = 48000k
@@ -174,6 +171,7 @@ void resynth_solo(int sr) { //linear interpolation
             //linearly interpolate amplitude
             amp = inst_amp[i] + (inst_amp[i+1] - inst_amp[i])*((float) (j-offset1)/(offset2-offset1));
             time = (float) j/sr;
+            
             synth_overtones(fundamental, amp, time, overtone_num, scale, j); //calculate value and write it as unsigned char to synth_pitch array
         }
     }
@@ -461,13 +459,12 @@ int calc_inst_freq_bin(int pos, int bin) {
     float inst_bin, tp1[FRAMELEN], tp2[FRAMELEN], ph1, ph2, omega, ph_inc, i1, i2, r1, r2, c; //FREQDIM is 1024
 
     inc = 100; //number of samples between first and second frames for phase-based pitch calculation
-    
-    offset = max(( (pos+1)*SKIPLEN - FRAMELEN)*BYTES_PER_SAMPLE,0);
-    
+    offset = pos*SKIPLEN*BYTES_PER_SAMPLE;
     ptr1 = audiodata + offset;
     ptr2 = ptr1 + inc*2; //advance by 2 unsigned char per sample in audiodata
     samples2floats(ptr1, tp1, FRAMELEN);
     samples2floats(ptr2, tp2, FRAMELEN);
+    
     /*char * name = "/Users/apple/Documents/test_frame";
     FILE *fp = fopen(name , "wb");
     fwrite(tp1, freqs, sizeof(float), fp);
@@ -481,7 +478,7 @@ int calc_inst_freq_bin(int pos, int bin) {
         r1 += tp1[j] * cosf(c * j) * window[j];
         r2 += tp2[j] * cosf(c * j) * window[j];
     }
-    omega = 2 * PI * bin * inc / freqs; //expected number of cycles per increment
+    omega = 2 * PI * bin * (float) inc / FREQDIM; //expected number of cycles per increment
     
     ph1 = atan2f(i1, r1); //get phase increment
     ph2 = atan2f(i2, r2);
@@ -489,7 +486,7 @@ int calc_inst_freq_bin(int pos, int bin) {
     ph_inc = omega + princarg(ph2 - ph1 - omega); //add increment between -pi and +pi
     inst_freq[pos] = ph_inc * (float) SR / (2 * PI * inc); //actual instantaneous frequency
     float tempp = inst_freq[pos];
-    inst_bin = hz2omega(inst_freq[pos]) / 2; //get bin value. had to divide by 2 because hz2omega assumes 2xframelen
+    inst_bin = hz2omega(inst_freq[pos]); //get bin value. had to divide by 2 because hz2omega assumes 2xframelen
     return (int) inst_bin;
 }
 

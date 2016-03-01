@@ -393,9 +393,9 @@ init_like() {
 }
 
 float princarg(float phasein) {
-    float a = phasein / (2 * PI);
-    int k = round(a); //??? check that rounds down not up
-    return (phasein - k * 2 * PI);
+    float a = (float) phasein / (2 * PI);
+    int k = floorf(a); //??? check that rounds down not up
+    return (phasein - (float) k * 2 * PI);
 }
 
 
