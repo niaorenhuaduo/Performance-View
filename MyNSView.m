@@ -29,7 +29,7 @@ int cur_play_frame_num;
 int start_play_frame_num;
 static int audio_type = ON_SOLO;
 
-static int last_frame;  // the last played frame 
+static int last_frame;  // the last played frame
 static FILE *hires_solo_fp = NULL;
 static FILE *hires_orch_fp = NULL;
 static int is_hires_audio=0;  // this boolean is local to guispect.
@@ -45,30 +45,30 @@ static int scroll_pos;  // the frame for the left edge of what is displayed in t
 #define MAX_SPECT_WIDTH 2500 //2000  // this is the official version, no matter what the gui might say
 #define CLICK_DIFF 20 //  80 //40 //10
 
-#define RULER_HT 20  
+#define RULER_HT 20
 
 static int click_diff = CLICK_DIFF;
 
 
 typedef struct {  // always using scroll_pos for the 1st frame
-  unsigned char buff[MAX_SPECT_WIDTH*MAX_SPECT_HEIGHT];
-  unsigned char *ptr[MAX_SPECT_WIDTH];
+    unsigned char buff[MAX_SPECT_WIDTH*MAX_SPECT_HEIGHT];
+    unsigned char *ptr[MAX_SPECT_WIDTH];
 } SPECT_PAGE;
 
 
 typedef struct {
-  unsigned char *buff;
-  unsigned char *scan_line[MAX_SPECT_HEIGHT];
+    unsigned char *buff;
+    unsigned char *scan_line[MAX_SPECT_HEIGHT];
 } VISIBLE_PAGE;
 
 #define READ_BUFFER_SIZE 100000  //100000
 
 typedef struct {
-  FILE *fp;
-  unsigned char *buff;
-  int cur;
-  int seam;
-  int is_empty;
+    FILE *fp;
+    unsigned char *buff;
+    int cur;
+    int seam;
+    int is_empty;
 } READ_BUFFER;
 
 typedef struct {
@@ -141,45 +141,52 @@ rem_click(int m) {
 
 #define MOVING_LINE_COLOR COLOR_BLUE
 
-void synth_overtones(float f, float a, float t, int num, float scale, int index) {
-    float wav = 0;
-    //samp += (0.001/j) * sinf(j*(440+change) * (2 * 3.14159) * (float) i / SR + (j * 0.1));
 
-    for (int i = 1; i <= num; i++) {
-        wav += sinf(2 * PI * i * f * t)*(float) 1/(num*num);
+
+void synth_overtones(int offset1, int offset2, float f1, float f2, float a1, float a2, int overtone_num, int sr, float *phi, float scale) {
+    float wav, g, time, delta;
+    int samples = offset2 - offset1;
+    float time_frame = (float) (samples) / sr; //time difference in seconds
+    float f_diff = f2 - f1; //freq difference
+    float a_diff = a2 - a1; //amplitude difference
+    float amp = 0.3;
+    for (int j = offset1; j < offset2; j++) {
+        wav = 0;
+        delta = (float) (j-offset1)/(samples);
+        time = time_frame * delta;
+        amp = (a1 + a_diff * delta) * scale;
+        //amp = 0.3;
+        g = PI * (f_diff * delta * time + 2 * f1 * time);
+        for (int i = 1; i <= overtone_num; i++) {
+            wav += (float) amp/i * sinf(i*g + i * (*phi) + i * 0.1);
+        }
+        float2sample(wav, synth_pitch + j * 2);
+        
     }
-    a = 0.7;
-    float temp = a * wav * scale;
-    float2sample(a * wav * scale, synth_pitch + index*2);
-    printf("\nsynth_pitch: %f", temp);
-    
+    *phi = fmodf(*phi + g, (2*PI));
 }
+
 
 void resynth_solo(int sr) { //linear interpolation
     char stump[500];
-    int offset1, offset2, overtone_num = 4;
-    int startframe = score.solo.note[1].frames;
-    float fundamental, amp, time, scale = 1;
-    for (int i = startframe; i < 700; i++) { //5000 is length of inst_freq[]
-        offset1 = (i - startframe) * SKIPLEN;
-        offset2 = (i+1 - startframe) * SKIPLEN;
-        offset1 = offset1 * sr / SR;         //change 8000 k to sr = 48000k
-        offset2 = offset2 * sr / SR;
-        for (int j = offset1; j < offset2; j++) {
-            //linearly interpolate pitch
-            fundamental = inst_freq[i] + (inst_freq[i+1] - inst_freq[i])*((float) (j-offset1)/(offset2-offset1));
-            //linearly interpolate amplitude
-            amp = inst_amp[i] + (inst_amp[i+1] - inst_amp[i])*((float) (j-offset1)/(offset2-offset1));
-            time = (float) j/sr;
-            
-            synth_overtones(fundamental, amp, time, overtone_num, scale, j); //calculate value and write it as unsigned char to synth_pitch array
-        }
+    int offset1, offset2, overtone_num = 7, startframe;
+    float amp, scale = 0.5, phase_shift;
+    startframe = score.solo.note[1].frames;
+    phase_shift = 0;
+    for (int i = first_analyzed_frame; i < last_analyzed_frame - 1; i++) { //5000 is length of inst_freq[]
+        //for (int i = startframe; i < 800; i++) { //5000 is length of inst_freq[]
+        offset1 = (i) * SKIPLEN * (sr / SR);  //change 8000 k to sr = 48000k
+        int xxx = SKIPLEN;
+        offset2 = (i+1) * SKIPLEN * (sr / SR);
+        synth_overtones(offset1, offset2, inst_freq[i], inst_freq[i+1], sqrtf(inst_amp[i]), sqrtf(inst_amp[i+1]), overtone_num, sr, &phase_shift, scale);
     }
     FILE *fp;
     strcpy(stump,audio_data_dir);
     strcat(stump, "synth_pitch");
-    fp = fopen(stump, "w");
-    fwrite(synth_pitch, frames*TOKENLEN,BYTES_PER_SAMPLE, fp);
+    fp = fopen(stump, "wb");
+    //fwrite(synth_pitch, frames*(TOKENLEN*sr/SR),BYTES_PER_SAMPLE, fp);
+    //fwrite(synth_pitch, 1000*(TOKENLEN*sr/SR),BYTES_PER_SAMPLE, fp);
+    fwrite(synth_pitch,48000*60 ,BYTES_PER_SAMPLE, fp);
     fclose(fp);
     play_synthesis = 1;
 }
@@ -198,57 +205,57 @@ line_color(n) { /* this is definitive color algorithm */
 
 void  // removed for compile
 add_text_pos() {
-  char pos[500],t[500],c[500],frame[500],text[500],meas[500];
-  
-  if (cur_nt < firstnote)  {
-    strcpy(meas,"Pos:");
-    strcpy(frame, "0"); // "Frame: 0";
+    char pos[500],t[500],c[500],frame[500],text[500],meas[500];
+    
+    if (cur_nt < firstnote)  {
+        strcpy(meas,"Pos:");
+        strcpy(frame, "0"); // "Frame: 0";
+        [[[NSApplication sharedApplication] delegate] setStatusPos:meas];
+        [[[NSApplication sharedApplication] delegate] setStatFrame];
+        return;
+    }
+    wholerat2string(score.solo.note[cur_nt].wholerat,pos);
+    strcpy(t,pos);
+    sndnums2string(score.solo.note[cur_nt].snd_notes,c);
+    //  sprintf(t," note(s) %s at pos %s (frame %d)",c,pos,score.solo.note[cur_nt].frames);
+    sprintf(frame,"%d",score.solo.note[cur_nt].frames);
+    if (score.solo.note[cur_nt].frames == 0) strcpy(frame,"unknown");
+    //  Spect->Label1->Caption = t;
+    sprintf(text,"%s",pos);
+    //  sprintf(text,"Pos: %s",pos);
+    strcpy(meas,text);
+    
     [[[NSApplication sharedApplication] delegate] setStatusPos:meas];
+    
+    //  Spect->Status->Panels->Items[4]->Text = text;
+    //sprintf(text,"Pitches: %s",c);
+    //sprintf(text,"%s",c);
+    //  Spect->Status->Panels->Items[5]->Text = text;
+    //  sprintf(text,"Frame: %s",frame);
+    sprintf(text,"%s",frame);
     [[[NSApplication sharedApplication] delegate] setStatFrame];
-    return;
-  }
-  wholerat2string(score.solo.note[cur_nt].wholerat,pos);
-  strcpy(t,pos);
-  sndnums2string(score.solo.note[cur_nt].snd_notes,c);
-  //  sprintf(t," note(s) %s at pos %s (frame %d)",c,pos,score.solo.note[cur_nt].frames);
-  sprintf(frame,"%d",score.solo.note[cur_nt].frames);
-  if (score.solo.note[cur_nt].frames == 0) strcpy(frame,"unknown");
-  //  Spect->Label1->Caption = t;
-  sprintf(text,"%s",pos);
-  //  sprintf(text,"Pos: %s",pos);
-  strcpy(meas,text);
-  
-  [[[NSApplication sharedApplication] delegate] setStatusPos:meas];
-
-  //  Spect->Status->Panels->Items[4]->Text = text;
-  //sprintf(text,"Pitches: %s",c);
-  //sprintf(text,"%s",c);
-  //  Spect->Status->Panels->Items[5]->Text = text;
-  //  sprintf(text,"Frame: %s",frame);
-  sprintf(text,"%s",frame);
-    [[[NSApplication sharedApplication] delegate] setStatFrame];
-  //  Spect->Status->Panels->Items[5]->Text = text;
+    //  Spect->Status->Panels->Items[5]->Text = text;
 }
 
 
 
 static void
 init_visible_page(unsigned char *buff, int width, int height) {
-  int i;
-  visible_page.buff = buff;
-  for (i=0; i < height; i++) visible_page.scan_line[i] = buff + i*width*3;
+    int i;
+    visible_page.buff = buff;
+    for (i=0; i < height; i++) visible_page.scan_line[i] = buff + i*width*3;
 }
 
 
 static int
 show_index(int j) {
-  RATIONAL r,d;
-
-  if (is_solo_rest(j) && show_rests == 0) return(0);
-  if (spect_inc.num == 0) return(1);
-  r = wholerat2measrat(score.solo.note[j].wholerat);
-  d = div_rat(r,spect_inc);
-  return (d.den == 1);
+    RATIONAL r,d;
+    
+    if (is_solo_rest(j) && show_rests == 0) return(0);
+    if (spect_inc.num == 0) return(1);
+    r = wholerat2measrat(score.solo.note[j].wholerat);
+    d = div_rat(r,spect_inc);
+    return (d.den == 1);
 }
 
 
@@ -306,15 +313,15 @@ add_mark_to_visible(int column, int color, int top, int bot) {
     z[0]=  b = (color&4) ? 255 : 0;
     //  for (i=0; i < SPECT_HT; i++) {
     for (i=top; i < bot; i++) {
-        [bitmap setPixel:z atX:(column-scroll_pos) y:i];   
+        [bitmap setPixel:z atX:(column-scroll_pos) y:i];
     }
     
-   
+    
     NSRect rect  = {column-scroll_pos,0,1,SPECT_HT};
     
     [view_self setNeedsDisplayInRect:rect];
     
-   
+    
     
     
 }
@@ -323,15 +330,15 @@ add_mark_to_visible(int column, int color, int top, int bot) {
 
 static void
 restore_synth_marks(int column) {
-  int i;
-
-  for (i=firstnote; i < cur_note; i++) {  // fix solo note markers that were erased
-    if (column != (int) secs2tokens(score.solo.note[i].on_line_secs)) continue;
-    if (score.solo.note[i].treating_as_observed == 0) continue;
-    add_mark_to_visible(column/*-scroll_pos*/, COLOR_GREEN, 0,25);
-  }
-  if (column != prediction_target[cur_accomp-1]) return;  // fix orchestra mark that was erased
-  add_mark_to_visible(column/*-scroll_pos*/, COLOR_RED, 25,50);
+    int i;
+    
+    for (i=firstnote; i < cur_note; i++) {  // fix solo note markers that were erased
+        if (column != (int) secs2tokens(score.solo.note[i].on_line_secs)) continue;
+        if (score.solo.note[i].treating_as_observed == 0) continue;
+        add_mark_to_visible(column/*-scroll_pos*/, COLOR_GREEN, 0,25);
+    }
+    if (column != prediction_target[cur_accomp-1]) return;  // fix orchestra mark that was erased
+    add_mark_to_visible(column/*-scroll_pos*/, COLOR_RED, 25,50);
 }
 
 
@@ -339,14 +346,14 @@ restore_synth_marks(int column) {
 
 
 
-static void 
+static void
 restore_line_to_visible(int column) {
     unsigned int r, g, b;
     int i,j,width,base,col;
     Byte *ptr,*iptr;
     char comment[500];
     NSUInteger z[3],*cptr,black[3]={0,0,0};
-  //  TRect src,dst;
+    //  TRect src,dst;
     
     base = (SPECT_HT >= freqs) ? 0 : freqs-SPECT_HT;
     width = spect_wd;
@@ -354,29 +361,29 @@ restore_line_to_visible(int column) {
     if (column >= scroll_pos+width) return;
     col = column - scroll_pos;
     for (i=RULER_HT; i < SPECT_HT; i++) {
-  //  for (i=0; i < SPECT_HT; i++) {
-
+        //  for (i=0; i < SPECT_HT; i++) {
+        
         r = g = b = spect_page.ptr[col][i];
-	for (j=0; j < 3; j++) z[j] = r;
-      //  cptr = (i < RULER_HT) ? black : z;
-	//        NSUInteger zColourAry[3] = {r,g,b};
+        for (j=0; j < 3; j++) z[j] = r;
+        //  cptr = (i < RULER_HT) ? black : z;
+        //        NSUInteger zColourAry[3] = {r,g,b};
         [bitmap setPixel:z atX:col y:i];
         //  for (i=0; i < SPECT_HT; i++) {
-      /*  ptr = (Byte *) visible->ScanLine[i];
-        iptr = (Byte *) spectrogram->ScanLine[base+i];
-        for (j=0; j < 3; j++)  ptr[3*(column-scroll_pos)+j] = iptr[3*column+j];*/
-    
+        /*  ptr = (Byte *) visible->ScanLine[i];
+         iptr = (Byte *) spectrogram->ScanLine[base+i];
+         for (j=0; j < 3; j++)  ptr[3*(column-scroll_pos)+j] = iptr[3*column+j];*/
+        
     }
-   // NSRect rect  = {col-5,100,10,100};
+    // NSRect rect  = {col-5,100,10,100};
     if (mode == SYNTH_MODE) restore_synth_marks(column);
     
-  //    NSRect rect  = {col,0,1,SPECT_HT};
-   // NSRect rect  = {col,0,1,SPECT_HT-RULER_HT};
-     NSRect rect  = {col-1,0,2,SPECT_HT-RULER_HT};
-    /* AFAICT this is a bug in Apple's implementation.  This used to work fine with the rectangle 
+    //    NSRect rect  = {col,0,1,SPECT_HT};
+    // NSRect rect  = {col,0,1,SPECT_HT-RULER_HT};
+    NSRect rect  = {col-1,0,2,SPECT_HT-RULER_HT};
+    /* AFAICT this is a bug in Apple's implementation.  This used to work fine with the rectangle
      as defined above. Now I need a 2-pixel-wide rectangle to undo the moving line */
-     [view_self setNeedsDisplayInRect:rect];
-   
+    [view_self setNeedsDisplayInRect:rect];
+    
 }
 
 
@@ -398,32 +405,32 @@ add_line_to_visible(int column, int color) {
     z[0]=  b = (color&4) ? 255 : 0;
     //  for (i=0; i < SPECT_HT; i++) {
     for (i=RULER_HT; i < SPECT_HT; i++) { //adds a little space on top for measure markings
-    
-      //  for (i=0; i < SPECT_HT; i++) {
-      //        NSUInteger zColourAry[3] = {r,g,b};
-      //[bitmap setPixel:zColourAry atX:(column-scroll_pos) y:i];
-           // cptr = (i < RULER_HT) ? black : z;
-            [bitmap setPixel:z atX:(column-scroll_pos) y:i]; //x //true version
-
-      /*  ptr = (Byte *) visible->ScanLine[i] + 3*(column-scroll_pos);
-        ptr[0] = r;
-        ptr[1] = g;
-        ptr[2] = b;*/
+        
+        //  for (i=0; i < SPECT_HT; i++) {
+        //        NSUInteger zColourAry[3] = {r,g,b};
+        //[bitmap setPixel:zColourAry atX:(column-scroll_pos) y:i];
+        // cptr = (i < RULER_HT) ? black : z;
+        [bitmap setPixel:z atX:(column-scroll_pos) y:i]; //x //true version
+        
+        /*  ptr = (Byte *) visible->ScanLine[i] + 3*(column-scroll_pos);
+         ptr[0] = r;
+         ptr[1] = g;
+         ptr[2] = b;*/
     }
     
-   
-   // NSRect rect  = {column-scroll_pos,0,1,SPECT_HT};
-     NSRect rect  = {column-scroll_pos,0,1,SPECT_HT-RULER_HT};
     
-     [view_self setNeedsDisplayInRect:rect];
+    // NSRect rect  = {column-scroll_pos,0,1,SPECT_HT};
+    NSRect rect  = {column-scroll_pos,0,1,SPECT_HT-RULER_HT};
     
-   
+    [view_self setNeedsDisplayInRect:rect];
+    
+    
     
     
 }
 
 static void
-add_line_to_visible_pitch(int column, int endpos, int color, int freq) {
+add_line_to_visible_pitch(int column, int endpos, int color, int freq, int *beg) {
     unsigned int r, g, b;
     int i,width;
     Byte *ptr;
@@ -433,7 +440,12 @@ add_line_to_visible_pitch(int column, int endpos, int color, int freq) {
     
     width = spect_wd;
     if (column < scroll_pos) return;
+    if (*beg == 1) {
+        first_analyzed_frame = column; //get index of first visible note
+        *beg = 0;
+    }
     if (column >= scroll_pos+width) return;
+    last_analyzed_frame = column; //get index of last visible note
     z[2] = r = (color&1) ? 255 : 0;
     z[1] = g = (color&2) ? 255 : 0;
     z[0]=  b = (color&4) ? 255 : 0;
@@ -443,7 +455,7 @@ add_line_to_visible_pitch(int column, int endpos, int color, int freq) {
         [bitmap setPixel:z atX:(i-scroll_pos) y:(SPECT_HT - freq)];
         
     }
-
+    
     NSRect rect  = {column-scroll_pos,0,(endpos - column),SPECT_HT-RULER_HT};
     
     [view_self setNeedsDisplayInRect:rect];
@@ -452,12 +464,15 @@ add_line_to_visible_pitch(int column, int endpos, int color, int freq) {
 
 
 
+
 int calc_inst_freq_bin(int pos, int bin) {
+    
+    float binf = (float) bin/2;
     int offset, inc;
     unsigned char *ptr1;
     unsigned char *ptr2;
     float inst_bin, tp1[FRAMELEN], tp2[FRAMELEN], ph1, ph2, omega, ph_inc, i1, i2, r1, r2, c; //FREQDIM is 1024
-
+    
     inc = 100; //number of samples between first and second frames for phase-based pitch calculation
     offset = pos*SKIPLEN*BYTES_PER_SAMPLE;
     ptr1 = audiodata + offset;
@@ -466,45 +481,54 @@ int calc_inst_freq_bin(int pos, int bin) {
     samples2floats(ptr2, tp2, FRAMELEN);
     
     /*char * name = "/Users/apple/Documents/test_frame";
-    FILE *fp = fopen(name , "wb");
-    fwrite(tp1, freqs, sizeof(float), fp);
-    fclose(fp);*/
+     FILE *fp = fopen(name , "wb");
+     fwrite(tp1, freqs, sizeof(float), fp);
+     fclose(fp);*/
     
     i1 = i2 = r1 = r2 = 0; //calculate fft for this bin for the chunks starting at ptr1 and ptr2
-    c = 2*PI*bin/freqs;
+    c = 2*PI*binf/freqs;
     for (int j=0; j<freqs; j++) {
-        i1 -= tp1[j] * sinf(c * j) * window[j];
-        i2 -= tp2[j] * sinf(c * j) * window[j];
-        r1 += tp1[j] * cosf(c * j) * window[j];
-        r2 += tp2[j] * cosf(c * j) * window[j];
+        i1 -= tp1[j] * sinf(c * j) * coswindow[j];
+        i2 -= tp2[j] * sinf(c * j) * coswindow[j];
+        r1 += tp1[j] * cosf(c * j) * coswindow[j];
+        r2 += tp2[j] * cosf(c * j) * coswindow[j];
     }
-    omega = 2 * PI * bin * (float) inc / FREQDIM; //expected number of cycles per increment
+    omega = 2 * PI * binf * (float) inc / FRAMELEN; //expected number of cycles per increment
     
     ph1 = atan2f(i1, r1); //get phase increment
     ph2 = atan2f(i2, r2);
-    //float phtemp = princarg(ph2 - ph1 - omega);
+    float phtemp = princarg(ph2 - ph1 - omega);
+    //printf("\n phase incr new = %f", phtemp);
     ph_inc = omega + princarg(ph2 - ph1 - omega); //add increment between -pi and +pi
     inst_freq[pos] = ph_inc * (float) SR / (2 * PI * inc); //actual instantaneous frequency
+    
     float tempp = inst_freq[pos];
+    printf("\n inst pitch = %f", tempp);
+    
     inst_bin = hz2omega(inst_freq[pos]); //get bin value. had to divide by 2 because hz2omega assumes 2xframelen
     return (int) inst_bin;
 }
 
 
 void calc_max_bin(int startpos, int endpos, int fbin) {
-    int max_bin, m, bin, k, width;
+    int max_bin, m, bin, k_min, k_max, width;
     float ph1, ph2, omega, ph_inc, f_inst, s, c, temp; //FREQDIM is 1024
     
     width = spect_wd; //check that note fits completely in window
     if (startpos < scroll_pos) return;
     if (endpos >= scroll_pos+width) return;
-    k = max(fbin - 5, 2); //examine bins in range of nominal bin for this note +=5
-    k = 3;
+    k_min = max(fbin - 4, 2); //examine bins in range of nominal bin for this note +=5
+    k_max = k_min + 8;
+    if (test_audio_wave == 1) { //except when analyzing synthetic sound wave: then, just look at all the bins
+        k_min = 2;
+        k_max = 500;
+    }
     for (int j = startpos; j < endpos; j++) {
         max_bin = m = -1;
-        printf("\n spect page");
-        for (int i = k; i < k+511; i++) {
-            printf("\t%d", (int) spect_page.ptr[j-scroll_pos][SPECT_HT-i]);
+        //for (int i = k; i < k+8; i++) {
+        for (int i = k_min; i < k_max; i++) {
+            
+            //printf("\t%d", (int) spect_page.ptr[j-scroll_pos][SPECT_HT-i]);
             if (spect_page.ptr[j-scroll_pos][SPECT_HT-i] > m) {
                 m = spect_page.ptr[j-scroll_pos][SPECT_HT-i];
                 max_bin = i;
@@ -529,7 +553,6 @@ add_line_to_inst_pitch(int column, int endpos, int color, int fbin) {
     Byte *ptr;
     NSUInteger z[3],*cptr;
     NSUInteger black[3] = {0,0,0};
-    
     
     width = spect_wd;
     if (column < scroll_pos) return;
@@ -582,32 +605,32 @@ draw_ruler() {
     black[2] = r = 0;
     black[1] = g = 0;
     black[0] = b = 0;
-
     
-   
+    
+    
     for (i=0; i < RULER_HT; i++) for (j=0; j < spect_wd; j++)
-         [bitmap setPixel:grey atX:j y:i];
+        [bitmap setPixel:grey atX:j y:i];
     for (k=0; k < ruler.num; k++) {
         q = wholerat2measrat(ruler.el[k].wholerat);
         m = wholerat2measnum(ruler.el[k].wholerat);
         if (q.num != 0) continue;
         l = ruler.el[k].index;
         is_solo = ruler.el[k].is_solo;
-     //   frame = (is_solo) ? score.solo.note[l].frames : score.midi.burst[l].frames;
+        //   frame = (is_solo) ? score.solo.note[l].frames : score.midi.burst[l].frames;
         frame = (is_solo) ? score.solo.note[l].frames : ruler.el[k].frames;
-     //   if (m == 1) NSLog(@"draw_ruler meas 1 at %d",frame);
+        //   if (m == 1) NSLog(@"draw_ruler meas 1 at %d",frame);
         j = frame-scroll_pos;
         for (i=0; i < RULER_HT; i++)  [bitmap setPixel:black atX:j y:i];
         
         
     }
-  
+    
     NSRect rect  = {0,SPECT_HT-RULER_HT,spect_wd,RULER_HT};  // vertical coords go from bottom
-
-
+    
+    
     [view_self setNeedsDisplayInRect:rect];
-   
-
+    
+    
 }
 
 
@@ -618,13 +641,13 @@ draw_note_markers(int b) {
     
     
     for (j=firstnote; j <= lastnote; j++) {
-      //        if (score.solo.note[firstnote].frames) NSLog(@"firstnote set at %d",j);
+        //        if (score.solo.note[firstnote].frames) NSLog(@"firstnote set at %d",j);
         if ((b == 1) && (show_index(j) == 0)) continue;
         m = score.solo.note[j].frames;
         f = score.solo.note[j].set_by_hand;
-       
-      //  if (m >= spectrogram->Width) continue;
-       
+        
+        //  if (m >= spectrogram->Width) continue;
+        
         color = COLOR_RED | (f*COLOR_BLUE);
         
         if (b) add_line_to_visible(m,color); else restore_line_to_visible(m);
@@ -676,14 +699,13 @@ void calculate_amplitude2(startframe, endframe) { //delete this one: it takes th
 
 static void
 draw_pitch(int b) {
-    int i,j,s,e,color,f,midi,width;
+    int i,j,s,e,color,f,midi,width,beg = 1;
     float fmidi,fbin;
     
     
     for (j=firstnote; j < lastnote; j++) {
-        
         if ((b == 1) && (show_index(j) == 0)) continue;
-
+        
         s = score.solo.note[j].frames; //starting position
         e = score.solo.note[j+1].frames; //ending position
         midi = score.solo.note[j].snd_notes.snd_nums[0]; //midi pitch
@@ -694,8 +716,8 @@ draw_pitch(int b) {
         fbin = (int) hz2omega(fmidi);
         
         calculate_amplitude(s, e);
-
-        if (b) add_line_to_visible_pitch(s, e, color, fbin);
+        
+        if (b) add_line_to_visible_pitch(s, e, color, fbin, &beg);
         if (b) add_line_to_inst_pitch(s, e, color+1, fbin);
         
         
@@ -715,11 +737,11 @@ get_spect_page(int edge, int width, SPECT_PAGE *page) {
     strcpy(file,user_dir);
     strcat(file,SPECT_DISC_FILE);
     bzero(page->buff,MAX_SPECT_WIDTH*MAX_SPECT_HEIGHT);
-   // fp = fopen(SPECT_DISC_FILE,"rb");
+    // fp = fopen(SPECT_DISC_FILE,"rb");
     fp = fopen(file,"rb");
     fseek(fp,edge*MAX_SPECT_HEIGHT,SEEK_SET);
     fread(page->buff,MAX_SPECT_HEIGHT*width,1,fp);
-  
+    
     fclose(fp);
     for (i=0; i < width; i++)   page->ptr[i] = page->buff + i*MAX_SPECT_HEIGHT;
     /*  for (i=0; i < width; i++) for (j=0; j < MAX_SPECT_HEIGHT; j++)
@@ -738,7 +760,7 @@ get_spect_page(int edge, int width, SPECT_PAGE *page) {
 
 
 
- void
+void
 highlight_notes() {
     highlight_solo_notes();
 }
@@ -751,30 +773,30 @@ make_spect_visible() {
     int x,y,i,bpr;
     unsigned char v,*ptr,*row[MAX_SPECT_HEIGHT],*col;
     
-    ptr = [bitmap bitmapData]; 
+    ptr = [bitmap bitmapData];
     bpr = [bitmap bytesPerRow];
     //    bpr = 3*spect_wd;
     for (y = 0; y < SPECT_HT; y++) row[y] = ptr + y*bpr;
     for (x = 0; x < spect_wd; x++) { // loop over columns
-      col = spect_page.ptr[x];
-      for (y = 0; y < SPECT_HT; y++) {  // going through column
-	v = *col++;
-	*row[y]++ = v;	*row[y]++ = v;	*row[y]++ = v;
-      }
+        col = spect_page.ptr[x];
+        for (y = 0; y < SPECT_HT; y++) {  // going through column
+            v = *col++;
+            *row[y]++ = v;	*row[y]++ = v;	*row[y]++ = v;
+        }
     }
     if (clicks_in) highlight_notes();
     return;
-	
-
-
-    for (y = 0; y < SPECT_HT; y++) { 
+    
+    
+    
+    for (y = 0; y < SPECT_HT; y++) {
         for (x = 0; x < spect_wd; x++) {
             r = g = b = spect_page.ptr[x][y];
             NSUInteger zColourAry[3] = {r,g,b};
-            [bitmap setPixel:zColourAry atX:x y:y];      
-        }         
-    }     
-    // draw_note_markers(1); 
+            [bitmap setPixel:zColourAry atX:x y:y];
+        }
+    }
+    // draw_note_markers(1);
     if (clicks_in) highlight_notes();
 }
 
@@ -797,14 +819,14 @@ scroll_if_needed(int new_pos, int dir) {  /* dir is + or - */
     
     if (dir == 0) return;
     width = spect_wd;
-  //  width = [[[NSApplication sharedApplication] delegate] spectWindowWidth];
-    on_page = (new_pos < scroll_pos+width  && new_pos >=  scroll_pos); 
+    //  width = [[[NSApplication sharedApplication] delegate] spectWindowWidth];
+    on_page = (new_pos < scroll_pos+width  && new_pos >=  scroll_pos);
     
     if (on_page) {
         if (dir > 0 && new_pos < scroll_pos+width-SCROLL_MARGIN) return;
         if (dir > 0 && frames == scroll_pos+width) return;  // no scrolling possible
         //  if (dir < 0 && new_pos >= scroll_pos+SCROLL_MARGIN) return;
-        if (dir < 0) if (scroll_pos == 0 || new_pos >= scroll_pos+SCROLL_MARGIN) return; 
+        if (dir < 0) if (scroll_pos == 0 || new_pos >= scroll_pos+SCROLL_MARGIN) return;
     }
     
     // prepare  to scroll
@@ -818,7 +840,7 @@ scroll_if_needed(int new_pos, int dir) {  /* dir is + or - */
     make_spect_visible();
     draw_ruler();
     [view_self setNeedsDisplay:YES];
-
+    
     /* init_visible();
      Spect->Image1->Canvas->Draw(0,0,visible);*/
 }
@@ -828,60 +850,60 @@ scroll_if_needed(int new_pos, int dir) {  /* dir is + or - */
 
 static void
 initialize_note_pos() {
-  int i,l=-1,r=-1;
-
-  for (i=0; i < score.midi.num; i++) 
-    if (score.solo.note[i].set_by_hand && i < cur_nt) l = i; 
-  score.solo.note[cur_nt].frames = 
+    int i,l=-1,r=-1;
+    
+    for (i=0; i < score.midi.num; i++)
+        if (score.solo.note[i].set_by_hand && i < cur_nt) l = i;
+    score.solo.note[cur_nt].frames =
     (l == -1) ? 0 : score.solo.note[l].frames;
 }
 
 void
 unmark_note(void) {
-  int c,n;
-
-
-  score.solo.note[cur_nt].set_by_hand = 0;
-  c = line_color(cur_nt);
-  n = score.solo.note[cur_nt].frames;
-  add_line_to_visible(n,c);
+    int c,n;
+    
+    
+    score.solo.note[cur_nt].set_by_hand = 0;
+    c = line_color(cur_nt);
+    n = score.solo.note[cur_nt].frames;
+    add_line_to_visible(n,c);
 }
 
 
 void
 move_cur_nt(int inc) {
-  int p,n,c,i;
-
+    int p,n,c,i;
+    
     current_parse_changed_by_hand =1;
-  if (score.solo.note[cur_nt].frames <= 0) initialize_note_pos();  // an experiment 12-09
-  if (cur_nt < firstnote) return;
-  n = score.solo.note[cur_nt].frames + inc;
-  if (n < 0 || n >= frames) return;
-  for (i=firstnote; i <= lastnote; i++) {
-    if (score.solo.note[i].set_by_hand == 0) continue;
-    if (i < cur_nt && score.solo.note[i].frames >= n) break;
-    if (i > cur_nt && score.solo.note[i].frames <= n) break;
-  }
-  if (i <= lastnote) return;  // can't cross over hand set note
-  /* this isn't right.  it is okay to cross over handset if you are crossing in correct direction.
+    if (score.solo.note[cur_nt].frames <= 0) initialize_note_pos();  // an experiment 12-09
+    if (cur_nt < firstnote) return;
+    n = score.solo.note[cur_nt].frames + inc;
+    if (n < 0 || n >= frames) return;
+    for (i=firstnote; i <= lastnote; i++) {
+        if (score.solo.note[i].set_by_hand == 0) continue;
+        if (i < cur_nt && score.solo.note[i].frames >= n) break;
+        if (i > cur_nt && score.solo.note[i].frames <= n) break;
+    }
+    if (i <= lastnote) return;  // can't cross over hand set note
+    /* this isn't right.  it is okay to cross over handset if you are crossing in correct direction.
      it is not okay to move from the correct side to the incrorrect side */
-  score.solo.note[cur_nt].set_by_hand = 1;
-  /*if (cur_nt > firstnote && score.solo.note[cur_nt].frames < score.solo.note[cur_nt-1].frames)
-    score.solo.note[cur_nt].frames = score.solo.note[cur_nt-1].frames + 2;
-    this is an experiment.  If note is out of sequence at least put it in sequence. */
-  p = score.solo.note[cur_nt].frames;
-  
-  score.solo.note[cur_nt].frames = n;
-  restore_line_to_visible(p);
-  rem_click(p);
-  c = line_color(cur_nt);
-  add_line_to_visible(n,c);
-  add_click(n);
-  
- //  add_text_pos();  // really just rewrite the frame number
+    score.solo.note[cur_nt].set_by_hand = 1;
+    /*if (cur_nt > firstnote && score.solo.note[cur_nt].frames < score.solo.note[cur_nt-1].frames)
+     score.solo.note[cur_nt].frames = score.solo.note[cur_nt-1].frames + 2;
+     this is an experiment.  If note is out of sequence at least put it in sequence. */
+    p = score.solo.note[cur_nt].frames;
+    
+    score.solo.note[cur_nt].frames = n;
+    restore_line_to_visible(p);
+    rem_click(p);
+    c = line_color(cur_nt);
+    add_line_to_visible(n,c);
+    add_click(n);
+    
+    //  add_text_pos();  // really just rewrite the frame number
     draw_ruler();  // really don't need to draw *all* of ruler ...
-  scroll_if_needed(n,inc);
-  
+    scroll_if_needed(n,inc);
+    
 }
 
 
@@ -917,18 +939,18 @@ highlight_neighbor_note(int inc) {
     int i,n,width,linepos,rel,mv,pos,d,c,orig_note,m,nxt;
     //  TRect r;
     static scrollpos;
- //   extern int piano_key_down[];
+    //   extern int piano_key_down[];
     
     d = (inc > 0) ? 1 : -1;
     nxt = cur_nt+inc;
     if (nxt > lastnote || nxt < firstnote-1) return;
     orig_note = cur_nt;
     cur_nt += inc;
-   
-   /* while ((show_index(cur_nt) == 0 || score.solo.note[cur_nt].frames <= 0) &&
-           // (cur_nt < lastnote) && (cur_nt > firstnote)) cur_nt += d;
-           (cur_nt < lastnote) && (cur_nt >= firstnote)
-    ) cur_nt += d;*/
+    
+    /* while ((show_index(cur_nt) == 0 || score.solo.note[cur_nt].frames <= 0) &&
+     // (cur_nt < lastnote) && (cur_nt > firstnote)) cur_nt += d;
+     (cur_nt < lastnote) && (cur_nt >= firstnote)
+     ) cur_nt += d;*/
     
     
     while ((note_showable(cur_nt) == 0) &&
@@ -939,7 +961,7 @@ highlight_neighbor_note(int inc) {
     //  if (show_index(cur_nt) == 0) cur_nt = orig_note;  // there wasn't showable note in requested direction
     
     if (cur_nt != (firstnote-1) && note_showable(cur_nt) == 0)
-       // ((score.solo.note[cur_nt].frames <= 0) || (show_index(cur_nt) == 0)))
+        // ((score.solo.note[cur_nt].frames <= 0) || (show_index(cur_nt) == 0)))
         cur_nt = orig_note;
     // there wasn't showable note in requested direction
     
@@ -953,11 +975,11 @@ highlight_neighbor_note(int inc) {
     for (i=0;i < score.solo.note[orig_note].snd_notes.num; i++){
         //     draw_piano_key(score.solo.note[orig_note].snd_notes.snd_nums[i],0);
         m = score.solo.note[orig_note].snd_notes.snd_nums[i];
- //   piano_key_down[m]=0;
-      
+        //   piano_key_down[m]=0;
+        
     }
     
- //   add_text_pos();
+    //   add_text_pos();
     
     //  linepos = score.solo.note[cur_nt].frames;
     linepos = (cur_nt == firstnote-1) ? 0 : score.solo.note[cur_nt].frames;
@@ -965,13 +987,13 @@ highlight_neighbor_note(int inc) {
     scroll_if_needed(linepos , inc);
     add_line_to_visible(linepos,c);
     if (cur_nt >= firstnote && cur_nt <= lastnote) {
-      for (i=0;i < score.solo.note[cur_nt].snd_notes.num; i++) {
-        //     draw_piano_key(score.solo.note[cur_nt].snd_notes.snd_nums[i],1);
-        m = score.solo.note[cur_nt].snd_notes.snd_nums[i];
-  //     piano_key_down[m] = 1;
-      }
+        for (i=0;i < score.solo.note[cur_nt].snd_notes.num; i++) {
+            //     draw_piano_key(score.solo.note[cur_nt].snd_notes.snd_nums[i],1);
+            m = score.solo.note[cur_nt].snd_notes.snd_nums[i];
+            //     piano_key_down[m] = 1;
+        }
     }
- //   [piano_self setNeedsDisplay:YES];  // removed for compile
+    //   [piano_self setNeedsDisplay:YES];  // removed for compile
 }
 
 //static void
@@ -991,31 +1013,31 @@ highlight_solo_notes() {
 
 void
 save_audio_values() {
-  int i,m;
-
-  for (i=0; i < frames; i++) {
-    audio_frame_back[i]  = audiodata[2*i*TOKENLEN + 1];
-  }
+    int i,m;
+    
+    for (i=0; i < frames; i++) {
+        audio_frame_back[i]  = audiodata[2*i*TOKENLEN + 1];
+    }
 }
 
 static void
 scroll_to_left() {
-  int width,new_pos;
-
-  scroll_pos = 0;  // 0th frame at left edge
-  return;   // always at left edge
-  new_pos = score.solo.note[cur_nt].frames; 
-  //  width = Spect->ScrollBox1->ClientRect.Right;  /* this incudes container? */ // need this in mac
-  width = 0; // not this!!!
-  if (new_pos >= scroll_pos && new_pos < scroll_pos+width) return;
-  
-  scroll_pos = new_pos - SCROLL_MARGIN;
-  if (scroll_pos < 0) scroll_pos = 0;
-  if (scroll_pos >= frames - width) scroll_pos = frames - width;
-
-
-  //  if (score.solo.note[cur_nt].frames  < Spect->ScrollBox1->ClientRect.Right)  
-  //  else scroll_pos = score.solo.note[cur_nt].frames 
+    int width,new_pos;
+    
+    scroll_pos = 0;  // 0th frame at left edge
+    return;   // always at left edge
+    new_pos = score.solo.note[cur_nt].frames;
+    //  width = Spect->ScrollBox1->ClientRect.Right;  /* this incudes container? */ // need this in mac
+    width = 0; // not this!!!
+    if (new_pos >= scroll_pos && new_pos < scroll_pos+width) return;
+    
+    scroll_pos = new_pos - SCROLL_MARGIN;
+    if (scroll_pos < 0) scroll_pos = 0;
+    if (scroll_pos >= frames - width) scroll_pos = frames - width;
+    
+    
+    //  if (score.solo.note[cur_nt].frames  < Spect->ScrollBox1->ClientRect.Right)
+    //  else scroll_pos = score.solo.note[cur_nt].frames
 }
 
 
@@ -1027,134 +1049,134 @@ scroll_to_left() {
 
 void
 get_exper_rgb_spect_nommap() {
-  int ii,i,j,t,v,k,n,spec_ht,bufsz,chunk;
-  float **ss,**s,spread,mmax= -10000,mmin=10000,m,**matrix(),*mem,tot,pred[FREQDIM],mx;
-  FILE *fp;
-  unsigned char *line;
-  Byte *ptr;
-  extern float last_spect[];
-  extern float diff_spect[];
-
-  line = (unsigned char *) malloc(3*frames);
-  mem = (float *) malloc(FREQDIM*frames*sizeof(float));
-  s = (float **) malloc(freqs*sizeof(float *));
-
-
-  for (j=0; j < freqs; j++)  s[j] = mem + frames*j;
-
-  for (token=0; token < frames; token++) {
-    //Application->ProcessMessages();
-
-
-    audio_listen();       /* really just want to compute spectrum here.  it would be faster 
-			     just do the fft calculation and skip orchestra spect etc. */
-
-    tot=0; 
-    mx=0;
-    for (j=0; j < freqs; j++) {
-      //      s[j][token] =  pow(log(1+spect[j]),.4);
-      s[j][token] =  spect[j];
-      if (s[j][token] > mx) mx = s[j][token];
-      /*#ifdef ATTACK_SPECT
-      s[j][token] =  diff_spect[j];
-      tot += s[j][token]; 
-      #endif*/
-      s[j][token] =  pow(log(1+s[j][token]),.4);
-    }
-    // for (j=0; j < freqs; j++) s[j][token] /= mx;
+    int ii,i,j,t,v,k,n,spec_ht,bufsz,chunk;
+    float **ss,**s,spread,mmax= -10000,mmin=10000,m,**matrix(),*mem,tot,pred[FREQDIM],mx;
+    FILE *fp;
+    unsigned char *line;
+    Byte *ptr;
+    extern float last_spect[];
+    extern float diff_spect[];
     
-    /*#ifdef ATTACK_SPECT
-    for (j=0; j < freqs; j++)  s[j][token] =  (tot <= 0) ? 0 : pow(log(1+s[j][token]/tot),.6);
-    #endif */
-
-  }
-  m=HUGE_VAL;
-
-  /*  for (j=0; j < frames; j++) { //
-    mmax = 0;
-    for (i = 0; i < freqs; i++)   if (s[i][j] > mmax) mmax = s[i][j];  
-    for (i = 0; i < freqs; i++) s[i][j] /= mmax;
-    }*/
+    line = (unsigned char *) malloc(3*frames);
+    mem = (float *) malloc(FREQDIM*frames*sizeof(float));
+    s = (float **) malloc(freqs*sizeof(float *));
     
-
-  for (i = 0; i < freqs; i++)   for (j=0; j < frames; j++) {
-    if (s[i][j] > mmax) mmax = s[i][j];  
-    if (s[i][j] < mmin) mmin = s[i][j];  
-  }
-
-
-  spread = mmax - mmin;
-  for (i = 0; i < SPECT_HT; i++) {
-    for (j=0, t=0; j < frames; j++) {
-      v = (int) (256*(s[SPECT_HT-i-1][j] - mmin)/spread);
-      line[t++] = v;      line[t++] = v;      line[t++] = v;
+    
+    for (j=0; j < freqs; j++)  s[j] = mem + frames*j;
+    
+    for (token=0; token < frames; token++) {
+        //Application->ProcessMessages();
+        
+        
+        audio_listen();       /* really just want to compute spectrum here.  it would be faster
+                               just do the fft calculation and skip orchestra spect etc. */
+        
+        tot=0;
+        mx=0;
+        for (j=0; j < freqs; j++) {
+            //      s[j][token] =  pow(log(1+spect[j]),.4);
+            s[j][token] =  spect[j];
+            if (s[j][token] > mx) mx = s[j][token];
+            /*#ifdef ATTACK_SPECT
+             s[j][token] =  diff_spect[j];
+             tot += s[j][token];
+             #endif*/
+            s[j][token] =  pow(log(1+s[j][token]),.4);
+        }
+        // for (j=0; j < freqs; j++) s[j][token] /= mx;
+        
+        /*#ifdef ATTACK_SPECT
+         for (j=0; j < freqs; j++)  s[j][token] =  (tot <= 0) ? 0 : pow(log(1+s[j][token]/tot),.6);
+         #endif */
+        
     }
-    //    ptr = (Byte *) spectrogram->ScanLine[i];
-    // memcpy(ptr,line,3*frames);
-  }
-  free(mem);
+    m=HUGE_VAL;
+    
+    /*  for (j=0; j < frames; j++) { //
+     mmax = 0;
+     for (i = 0; i < freqs; i++)   if (s[i][j] > mmax) mmax = s[i][j];
+     for (i = 0; i < freqs; i++) s[i][j] /= mmax;
+     }*/
+    
+    
+    for (i = 0; i < freqs; i++)   for (j=0; j < frames; j++) {
+        if (s[i][j] > mmax) mmax = s[i][j];
+        if (s[i][j] < mmin) mmin = s[i][j];
+    }
+    
+    
+    spread = mmax - mmin;
+    for (i = 0; i < SPECT_HT; i++) {
+        for (j=0, t=0; j < frames; j++) {
+            v = (int) (256*(s[SPECT_HT-i-1][j] - mmin)/spread);
+            line[t++] = v;      line[t++] = v;      line[t++] = v;
+        }
+        //    ptr = (Byte *) spectrogram->ScanLine[i];
+        // memcpy(ptr,line,3*frames);
+    }
+    free(mem);
 }
 
 
 void
 get_exper_rgb_spect_to_disc() {
-  int ii,i,j,t,v,k,n,spec_ht,bufsz,chunk;
-  float **ss,**s,spread,mmax= -10000,mmin=10000,m,**matrix(),*mem,tot,pred[FREQDIM],mx,z;
-  FILE *fp;
-  unsigned char *line,*col;
-  Byte *ptr;
-  extern float last_spect[];
-  extern float diff_spect[];
+    int ii,i,j,t,v,k,n,spec_ht,bufsz,chunk;
+    float **ss,**s,spread,mmax= -10000,mmin=10000,m,**matrix(),*mem,tot,pred[FREQDIM],mx,z;
+    FILE *fp;
+    unsigned char *line,*col;
+    Byte *ptr;
+    extern float last_spect[];
+    extern float diff_spect[];
     char file[500];
-
-  line = (unsigned char *) malloc(3*frames);
-  col = (unsigned char *) malloc(3*SPECT_HT);
-  mem = (float *) malloc(FREQDIM*frames*sizeof(float));
-  s = (float **) malloc(freqs*sizeof(float *));
-
-
-  for (j=0; j < freqs; j++)  s[j] = mem + frames*j;
-  for (token=0; token < frames; token++) {
-    background_info.fraction_done =  token / (float) frames;
-    audio_listen();       /* really just want to compute spectrum here.  it would be faster 
-			     just do the fft calculation and skip orchestra spect etc. */
-    tot=0; 
-    mx=0;
-    for (j=0; j < freqs; j++) {
-      s[j][token] =  spect[j];
-      if (s[j][token] > mx) mx = s[j][token];
-      s[j][token] =  pow(log(1+s[j][token]),.4);
+    
+    line = (unsigned char *) malloc(3*frames);
+    col = (unsigned char *) malloc(3*SPECT_HT);
+    mem = (float *) malloc(FREQDIM*frames*sizeof(float));
+    s = (float **) malloc(freqs*sizeof(float *));
+    
+    
+    for (j=0; j < freqs; j++)  s[j] = mem + frames*j;
+    for (token=0; token < frames; token++) {
+        background_info.fraction_done =  token / (float) frames;
+        audio_listen();       /* really just want to compute spectrum here.  it would be faster
+                               just do the fft calculation and skip orchestra spect etc. */
+        tot=0;
+        mx=0;
+        for (j=0; j < freqs; j++) {
+            s[j][token] =  spect[j];
+            if (s[j][token] > mx) mx = s[j][token];
+            s[j][token] =  pow(log(1+s[j][token]),.4);
+        }
     }
-  }
-  m=HUGE_VAL;
-  for (i = 0; i < freqs; i++)   for (j=0; j < frames; j++) {
-    if (s[i][j] > mmax) mmax = s[i][j];  
-    if (s[i][j] < mmin) mmin = s[i][j];  
-  }
-  spread = mmax - mmin;
+    m=HUGE_VAL;
+    for (i = 0; i < freqs; i++)   for (j=0; j < frames; j++) {
+        if (s[i][j] > mmax) mmax = s[i][j];
+        if (s[i][j] < mmin) mmin = s[i][j];
+    }
+    spread = mmax - mmin;
     strcpy(file,user_dir);
     strcat(file,SPECT_DISC_FILE);
- // fp = fopen(SPECT_DISC_FILE,"wb");
+    // fp = fopen(SPECT_DISC_FILE,"wb");
     fp = fopen(file,"wb");
-  for (j=0; j < frames; j++) {
-    for (i = 0; i < SPECT_HT; i++) {
-        z = s[SPECT_HT-i-1][j];
-      
-      v = (int) (256*( z- mmin)/spread);
-      col[i] = v;    
+    for (j=0; j < frames; j++) {
+        for (i = 0; i < SPECT_HT; i++) {
+            z = s[SPECT_HT-i-1][j];
+            
+            v = (int) (256*( z- mmin)/spread);
+            col[i] = v;
+        }
+        fwrite(col,sizeof(unsigned char)*SPECT_HT,1,fp);
     }
-    fwrite(col,sizeof(unsigned char)*SPECT_HT,1,fp);
-  }
-  fclose(fp);
-  free(mem);
-  
+    fclose(fp);
+    free(mem);
+    
 }
 
 
 
 get_exper_rgb_spect() {
-  //  get_exper_rgb_spect_mmap();  // may want to switch this back to mem mapping ...
-  //  get_exper_rgb_spect_nommap();
+    //  get_exper_rgb_spect_mmap();  // may want to switch this back to mem mapping ...
+    //  get_exper_rgb_spect_nommap();
     get_exper_rgb_spect_to_disc();  // may want to switch this back to mem mapping ...
 }
 
@@ -1262,13 +1284,13 @@ init_ruler() {
         if (score.solo.note[i].frames) add_ruler_marker(i,is_solo=1,0,0);
     for (i=first_accomp; i <= last_accomp; i++) {
         /*r = score.midi.burst[i].wholerat;
-        q = wholerat2measrat(r);
-        if (q.num == 0)*/ add_ruler_marker(i,is_solo=0,0,0);
+         q = wholerat2measrat(r);
+         if (q.num == 0)*/ add_ruler_marker(i,is_solo=0,0,0);
     }
     qsort(ruler.el,ruler.num,sizeof(RULER_EL),ruler_comp);
-   
     
-
+    
+    
     
     for (i=0; i < ruler.num; i++) {
         b = (i > 0 && rat_cmp(ruler.el[i].wholerat,ruler.el[i-1].wholerat) == 0);
@@ -1280,68 +1302,68 @@ init_ruler() {
     ruler.num = i;
     qsort(ruler.el,ruler.num,sizeof(RULER_EL),ruler_comp);
     
-  /*  for (i=0; i < ruler.num; i++) {
-        wholerat2string(ruler.el[i].wholerat,s);
-        j = ruler.el[i].index;
-        is_solo = ruler.el[i].is_solo;
-        frame = (is_solo) ? score.solo.note[j].frames : score.midi.burst[j].frames;
-            printf("%d\t%-15s\tmark=%d\tis_solo=%d\tj = %d\tframe = %d\n",i,s,ruler.el[i].mark, ruler.el[i].is_solo,j,frame);
-    }
-    fflush(stdout);
-    exit(0);*/
-               
+    /*  for (i=0; i < ruler.num; i++) {
+     wholerat2string(ruler.el[i].wholerat,s);
+     j = ruler.el[i].index;
+     is_solo = ruler.el[i].is_solo;
+     frame = (is_solo) ? score.solo.note[j].frames : score.midi.burst[j].frames;
+     printf("%d\t%-15s\tmark=%d\tis_solo=%d\tj = %d\tframe = %d\n",i,s,ruler.el[i].mark, ruler.el[i].is_solo,j,frame);
+     }
+     fflush(stdout);
+     exit(0);*/
+    
 }
 
 
 void
 show_spect() {
-  Byte *ptr;
-  int f,rows,cols,i,width,edge,f0;
-  unsigned char *rgb;
-  char comment[1000];
-  float m=0;
-  //  TRect rect;
-
+    Byte *ptr;
+    int f,rows,cols,i,width,edge,f0;
+    unsigned char *rgb;
+    char comment[1000];
+    float m=0;
+    //  TRect rect;
+    
     
     init_ruler();
-  //  draw_piano();
-  //  enable_spect_buttons();
-  ensemble_in = 0;
-  current_parse_changed_by_hand=0;
-  //  Spect->AccompRadioGroup->ItemIndex = 1;
-  //  [[[NSApplication sharedApplication] delegate] chooseAccompRadio:@"Out"];
-
-  //  Spect->AccompRadioGroup->Refresh();
- // clicks_in = 1;
-  //  Spect->MarkersRadioGroup->ItemIndex = 0;
-  show_rests = 0;
- // spect_inc.num = 0; spect_inc.den = 1;
-  last_frame = 0;
-  save_audio_values();
-  currently_playing = 0;
-  mode = 0;  /* kludge since listen balks for this is set to synth mode */
-  cur_nt = firstnote;
-  scroll_to_left();
+    //  draw_piano();
+    //  enable_spect_buttons();
+    ensemble_in = 0;
+    current_parse_changed_by_hand=0;
+    //  Spect->AccompRadioGroup->ItemIndex = 1;
+    //  [[[NSApplication sharedApplication] delegate] chooseAccompRadio:@"Out"];
+    
+    //  Spect->AccompRadioGroup->Refresh();
+    // clicks_in = 1;
+    //  Spect->MarkersRadioGroup->ItemIndex = 0;
+    show_rests = 0;
+    // spect_inc.num = 0; spect_inc.den = 1;
+    last_frame = 0;
+    save_audio_values();
+    currently_playing = 0;
+    mode = 0;  /* kludge since listen balks for this is set to synth mode */
+    cur_nt = firstnote;
+    scroll_to_left();
     rows = SPECT_HT; cols = frames;
     //	if (cols < spectrogram->Width) {
     //	        rect = TRect(cols,0,spectrogram->Width,SPECT_HT);  /* *old* spectrogram width */
     //	        Spect->Image1->Canvas->FillRect(rect);  /* restore background */
-       //    }
+    //    }
     // spectrogram->Height = freqs;  spectrogram->Width = frames;
     get_exper_rgb_spect();
     get_spect_page(0, spect_wd, &spect_page);
-    //      init_visible();      
-        f0 = (cur_nt < firstnote) ? 0 : score.solo.note[cur_nt].frames;
+    //      init_visible();
+    f0 = (cur_nt < firstnote) ? 0 : score.solo.note[cur_nt].frames;
     
     //draw_ruler();
- 
-	//  add_line_to_visible(f0,COLOR_GREEN); 
-	//	  Spect->Image1->Picture->Graphic = visible;  // for some reason this works when  Spect->Image1->Canvas->Draw(0,0,visible); doesn't
-
-   printf("max audio level = %f\n",max_audio_level());
+    
+    //  add_line_to_visible(f0,COLOR_GREEN);
+    //	  Spect->Image1->Picture->Graphic = visible;  // for some reason this works when  Spect->Image1->Canvas->Draw(0,0,visible); doesn't
+    
+    printf("max audio level = %f\n",max_audio_level());
     printf("done with guts\n");
-   background_info.fraction_done = 1;
-
+    background_info.fraction_done = 1;
+    
 }
 
 
@@ -1352,7 +1374,7 @@ show_spect() {
 
 
 #define MAX_PLUCK_DECAY .00020  // this is "click"
-#define MIN_PLUCK_DECAY .00005  // this is "pluck" 
+#define MIN_PLUCK_DECAY .00005  // this is "pluck"
 #define PLUCK_DECAY .00015   // higher means faster decay
 #define PLUCK_HARMONICS 7
 
@@ -1360,19 +1382,19 @@ show_spect() {
 static float *plucktab = NULL;
 
 
-#define MAX_PLUCK 10 
+#define MAX_PLUCK 10
 
 
 typedef struct {
-  float amp;
-  float phase;
-  float delta;
-  float hz;
+    float amp;
+    float phase;
+    float delta;
+    float hz;
 } PLUCK_STATE;
 
 typedef struct {
-  int num;
-  PLUCK_STATE pluck[MAX_PLUCK];
+    int num;
+    PLUCK_STATE pluck[MAX_PLUCK];
 } ALL_PLUCK_STATE;
 
 static ALL_PLUCK_STATE all_pluck_state;
@@ -1381,31 +1403,31 @@ static ALL_PLUCK_STATE all_pluck_state;
 
 static void
 del_pluck(int j) {
-  all_pluck_state.pluck[j] = all_pluck_state.pluck[--all_pluck_state.num];
+    all_pluck_state.pluck[j] = all_pluck_state.pluck[--all_pluck_state.num];
 }
 
 static void
 add_pluck(int m, float amp) {
-  PLUCK_STATE *p;
-  int i,mini;
-  float mina=HUGE_VAL;
-
-  if (all_pluck_state.num == MAX_PLUCK) {
-    for (i=0; i < all_pluck_state.num; i++) {
-      p = all_pluck_state.pluck + i;
-      if (p->amp < mina) { mina = p->amp; mini = i; }
-    }
-    del_pluck(mini);
-  }
+    PLUCK_STATE *p;
+    int i,mini;
+    float mina=HUGE_VAL;
     
-  p = all_pluck_state.pluck + all_pluck_state.num;
-  all_pluck_state.num++;
-  p->phase = 0;
-  //  p->amp = .01;
-  //  p->amp = .005*master_volume;
-  p->amp = amp;
-  p->hz = 440*pow(2.,(m-69)/12.);
-  p->delta = 2*PI*(p->hz)/(float)NOMINAL_OUT_SR;
+    if (all_pluck_state.num == MAX_PLUCK) {
+        for (i=0; i < all_pluck_state.num; i++) {
+            p = all_pluck_state.pluck + i;
+            if (p->amp < mina) { mina = p->amp; mini = i; }
+        }
+        del_pluck(mini);
+    }
+    
+    p = all_pluck_state.pluck + all_pluck_state.num;
+    all_pluck_state.num++;
+    p->phase = 0;
+    //  p->amp = .01;
+    //  p->amp = .005*master_volume;
+    p->amp = amp;
+    p->hz = 440*pow(2.,(m-69)/12.);
+    p->delta = 2*PI*(p->hz)/(float)NOMINAL_OUT_SR;
 }
 
 
@@ -1414,16 +1436,16 @@ add_pluck(int m, float amp) {
 
 static void
 init_plucktab() {
-  int i,h;
-  float x;
-
-  if (plucktab != NULL) return;
-  plucktab = (float *) malloc(PLUCK_TAB_LEN*sizeof(float));
-  for (i=0; i < PLUCK_TAB_LEN; i++) plucktab[i] = 0;
-  for (i=0; i < PLUCK_TAB_LEN; i++) {
-    x = i / (float) PLUCK_TAB_LEN;
-    for (h=1; h <= PLUCK_HARMONICS; h++) plucktab[i] += sin(2*PI*h*x);
-  }
+    int i,h;
+    float x;
+    
+    if (plucktab != NULL) return;
+    plucktab = (float *) malloc(PLUCK_TAB_LEN*sizeof(float));
+    for (i=0; i < PLUCK_TAB_LEN; i++) plucktab[i] = 0;
+    for (i=0; i < PLUCK_TAB_LEN; i++) {
+        x = i / (float) PLUCK_TAB_LEN;
+        for (h=1; h <= PLUCK_HARMONICS; h++) plucktab[i] += sin(2*PI*h*x);
+    }
 }
 
 
@@ -1431,92 +1453,92 @@ init_plucktab() {
 
 static int
 range2index(int lo, int hi) {
-  int i,hf;
-
-  for (i = firstnote; i <= lastnote; i++) {
-	hf = (score.solo.note[i].frames-start_play_frame_num)*SKIPLEN*IO_FACTOR;
-	if (hf >= lo && hf < hi) return(i);
-  }
-  return(-1);
+    int i,hf;
+    
+    for (i = firstnote; i <= lastnote; i++) {
+        hf = (score.solo.note[i].frames-start_play_frame_num)*SKIPLEN*IO_FACTOR;
+        if (hf >= lo && hf < hi) return(i);
+    }
+    return(-1);
 }
 
 
 
 static int
 gs_is_note_on(MIDI_EVENT *p) {
-  return ( ((p->command&0xf0) == NOTE_ON) && (p->volume > 0));
+    return ( ((p->command&0xf0) == NOTE_ON) && (p->volume > 0));
 }
 
 
 
 static int
 is_marked_range(int lo, int hi, int *which, int *note) {  // these are 48Khz frames
-  int i,hf,ii;
-
-  *which = *note = -1;
-  if (clicks_in == 0) return(0);
-  i = range2index(lo,hi);
-  if (i == -1) return(0);
-  if (show_index(i) == 0) return(0);
-  hf = (score.solo.note[i].frames-start_play_frame_num)*SKIPLEN*IO_FACTOR;
-  if (lo > hf || hf >= hi) { printf("this shouldn't happen here\n"); exit(0); }
-  *which = hf;
-  *note = i;
-  return(1);
+    int i,hf,ii;
+    
+    *which = *note = -1;
+    if (clicks_in == 0) return(0);
+    i = range2index(lo,hi);
+    if (i == -1) return(0);
+    if (show_index(i) == 0) return(0);
+    hf = (score.solo.note[i].frames-start_play_frame_num)*SKIPLEN*IO_FACTOR;
+    if (lo > hf || hf >= hi) { printf("this shouldn't happen here\n"); exit(0); }
+    *which = hf;
+    *note = i;
+    return(1);
 }
 
 
 
 static void
 generate_pluck_buff(float *buff, float *solo, int played, int n) {
-  int i,j,k,h,which,note,event,m;
-  PLUCK_STATE *p;
-  float decay,t;
-  static float loudness=.02;
-
-
-  for (i=t =0; i < n; i++) t += (solo[i]*solo[i]);
-  loudness = .99*loudness + .01*sqrt(t/n); // this is a good idea, sometimes miss plucks
-
-  decay = PLUCK_DECAY;
-  for (i=0; i < n; i++) buff[i] = 0;
-  //  if (is_marked_range(played, played+n,&which,&note))  for (k=0; k < 10; k++) buff[k+which-played] = /*.005*/0*master_volume;  // .05
-   event = is_marked_range(played, played+n,&which,&note);
-   if (event && use_pluck == 0)
-    for (k=0; k < 10; k++) buff[k+which-played] = 4*loudness;  // .05
-//  else which = -1;
-  if (use_pluck == 0) return;
-  for (i=0; i < n; i++) {
-    if (i == which-played) {
-      for (k=0; k < score.solo.note[note].action.num; k++) 
-	if (gs_is_note_on(score.solo.note[note].action.event+k)) 
-	  add_pluck(score.solo.note[note].action.event[k].notenum,.5*loudness);
+    int i,j,k,h,which,note,event,m;
+    PLUCK_STATE *p;
+    float decay,t;
+    static float loudness=.02;
+    
+    
+    for (i=t =0; i < n; i++) t += (solo[i]*solo[i]);
+    loudness = .99*loudness + .01*sqrt(t/n); // this is a good idea, sometimes miss plucks
+    
+    decay = PLUCK_DECAY;
+    for (i=0; i < n; i++) buff[i] = 0;
+    //  if (is_marked_range(played, played+n,&which,&note))  for (k=0; k < 10; k++) buff[k+which-played] = /*.005*/0*master_volume;  // .05
+    event = is_marked_range(played, played+n,&which,&note);
+    if (event && use_pluck == 0)
+        for (k=0; k < 10; k++) buff[k+which-played] = 4*loudness;  // .05
+    //  else which = -1;
+    if (use_pluck == 0) return;
+    for (i=0; i < n; i++) {
+        if (i == which-played) {
+            for (k=0; k < score.solo.note[note].action.num; k++)
+                if (gs_is_note_on(score.solo.note[note].action.event+k))
+                    add_pluck(score.solo.note[note].action.event[k].notenum,.5*loudness);
+        }
+        
+        for (j=0; j < all_pluck_state.num; j++) {
+            p = all_pluck_state.pluck+j;
+            /*      for (h=1; h <= PLUCK_HARMONICS; h++) {
+             if (h*p->hz > NOMINAL_OUT_SR/2) break;
+             buff[i] += p->amp*sin(h*p->phase);
+             }*/
+            m = (int) PLUCK_TAB_LEN*p->phase/(2*PI);
+            buff[i] += p->amp*plucktab[m];
+            p->phase += p->delta;
+            if (p->phase > 2*PI) p->phase -= 2*PI;
+            //      p->amp *= PLUCK_DECAY;
+            //      p->amp -= PLUCK_DECAY*p->amp;
+            p->amp -= decay*p->amp;
+            if (p->amp < .0001) del_pluck(j);
+        }
     }
-
-    for (j=0; j < all_pluck_state.num; j++) {
-      p = all_pluck_state.pluck+j;
-      /*      for (h=1; h <= PLUCK_HARMONICS; h++) {
-	if (h*p->hz > NOMINAL_OUT_SR/2) break;
-	buff[i] += p->amp*sin(h*p->phase);
-	}*/
-      m = (int) PLUCK_TAB_LEN*p->phase/(2*PI);
-      buff[i] += p->amp*plucktab[m];
-      p->phase += p->delta;
-      if (p->phase > 2*PI) p->phase -= 2*PI;
-      //      p->amp *= PLUCK_DECAY;
-      //      p->amp -= PLUCK_DECAY*p->amp;
-      p->amp -= decay*p->amp;
-      if (p->amp < .0001) del_pluck(j);
-    }
-  }
 }
 
 
 
 static void
 init_pluck() {
-  all_pluck_state.num = 0;
-  init_plucktab();
+    all_pluck_state.num = 0;
+    init_plucktab();
 }
 
 
@@ -1545,13 +1567,13 @@ buffer_hires_audio() {
     if (hires_orch_fp != NULL)
         fclose(hires_orch_fp);
     strcpy(stump,audio_data_dir);
-    if(play_synthesis == 1) {
-        strcat(stump, "silent_orchestra");
-    }
-    else {
-        strcat(stump,current_examp);
-        strcat(stump,".48o");
-    }
+    /*if(play_synthesis == 1) {
+     strcat(stump, "silent_orchestra");
+     }
+     else {*/
+    strcat(stump,current_examp);
+    strcat(stump,".48o");
+    //}
     hires_orch_fp = NULL;
     hires_orch_fp = fopen(stump,"rb");
     if (hires_orch_fp == NULL) { printf("yaya couldn't open %s\n",stump); return; /*exit(0); */}
@@ -1563,143 +1585,143 @@ buffer_hires_audio() {
 
 void
 sim_upsample_read(int samps, int frame, unsigned char *solo, unsigned char *orch) {
-  /* asio introduces an awkward problem since it will write audio in fixed buffer size chunks that will have nothing
+    /* asio introduces an awkward problem since it will write audio in fixed buffer size chunks that will have nothing
      to do with our frame length.  This routine simulates what fread does, but it uses low res samples and produces
      hi res ones.
-  */
-  static int seam,cur;  // sample indexes to circular buffer
-  static int dex; // index to audiodata and orchdata
-  static unsigned char orchbuff[SIM_UP_BUFF*BYTES_PER_SAMPLE],solobuff[SIM_UP_BUFF*BYTES_PER_SAMPLE];  // hi-res circ buffers
-  int avail,n,i;
-
-  if (frame == 0) {
-    dex =  SKIPLEN*start_play_frame_num; // next lo res sample for audiodata and orchdata
-    seam = cur = 0;
-  }
-  avail = cur-seam;
-  if (avail < 0) avail = SIM_UP_BUFF-avail;
-  n = ((samps-avail)/IO_FACTOR) + 1;  // number of low res samples to bring in
-  for (i = 0; i < n; i++, dex++, cur = (cur+IO_FACTOR)%SIM_UP_BUFF) {
-    upsample_audio(audiodata + dex*BYTES_PER_SAMPLE, solobuff + BYTES_PER_SAMPLE*cur, 1, IO_FACTOR, 1);
-    upsample_audio( orchdata + dex*BYTES_PER_SAMPLE, orchbuff + BYTES_PER_SAMPLE*cur, 1, IO_FACTOR, 1);
-    if (i > 0 && cur == seam) { printf("this is not good\n"); exit(0); }
-  }
-  if (cur == seam) { printf("this is not good\n"); exit(0); }
-  for (i=0; i < samps; i++,seam = (seam+1)%SIM_UP_BUFF) {
-    memcpy(solo + i*BYTES_PER_SAMPLE, solobuff + seam*BYTES_PER_SAMPLE, BYTES_PER_SAMPLE);
-    memcpy(orch + i*BYTES_PER_SAMPLE, orchbuff + seam*BYTES_PER_SAMPLE, BYTES_PER_SAMPLE);
-  }
+     */
+    static int seam,cur;  // sample indexes to circular buffer
+    static int dex; // index to audiodata and orchdata
+    static unsigned char orchbuff[SIM_UP_BUFF*BYTES_PER_SAMPLE],solobuff[SIM_UP_BUFF*BYTES_PER_SAMPLE];  // hi-res circ buffers
+    int avail,n,i;
+    
+    if (frame == 0) {
+        dex =  SKIPLEN*start_play_frame_num; // next lo res sample for audiodata and orchdata
+        seam = cur = 0;
+    }
+    avail = cur-seam;
+    if (avail < 0) avail = SIM_UP_BUFF-avail;
+    n = ((samps-avail)/IO_FACTOR) + 1;  // number of low res samples to bring in
+    for (i = 0; i < n; i++, dex++, cur = (cur+IO_FACTOR)%SIM_UP_BUFF) {
+        upsample_audio(audiodata + dex*BYTES_PER_SAMPLE, solobuff + BYTES_PER_SAMPLE*cur, 1, IO_FACTOR, 1);
+        upsample_audio( orchdata + dex*BYTES_PER_SAMPLE, orchbuff + BYTES_PER_SAMPLE*cur, 1, IO_FACTOR, 1);
+        if (i > 0 && cur == seam) { printf("this is not good\n"); exit(0); }
+    }
+    if (cur == seam) { printf("this is not good\n"); exit(0); }
+    for (i=0; i < samps; i++,seam = (seam+1)%SIM_UP_BUFF) {
+        memcpy(solo + i*BYTES_PER_SAMPLE, solobuff + seam*BYTES_PER_SAMPLE, BYTES_PER_SAMPLE);
+        memcpy(orch + i*BYTES_PER_SAMPLE, orchbuff + seam*BYTES_PER_SAMPLE, BYTES_PER_SAMPLE);
+    }
 }
 
 
 
 void
 init_read_buffer(READ_BUFFER *rb, FILE *fp) {
-  rb->fp = fp;
-  if (rb->buff == NULL)  rb->buff = (unsigned char *) malloc(READ_BUFFER_SIZE);
-  rb->is_empty = 1;
-  rb->cur = rb->seam = 0;
-
+    rb->fp = fp;
+    if (rb->buff == NULL)  rb->buff = (unsigned char *) malloc(READ_BUFFER_SIZE);
+    rb->is_empty = 1;
+    rb->cur = rb->seam = 0;
+    
 }
 
 void
 fill_read_buffer(READ_BUFFER *rb) {
-  int d,i=0;
-
-  if (rb->seam == rb->cur && rb->is_empty == 0) return; // buffer full
-  do { 
-    d = fread(rb->buff + rb->seam,1,1,rb->fp);
-    if (d == 0) rb->buff[rb->seam] = 0;  // always fill with something even if file done
-    (rb->seam)++;
-    if (rb->seam == READ_BUFFER_SIZE) rb->seam = 0;
-    i++;
-  } while (rb->cur != rb->seam);
-  rb->is_empty = 0;
+    int d,i=0;
+    
+    if (rb->seam == rb->cur && rb->is_empty == 0) return; // buffer full
+    do {
+        d = fread(rb->buff + rb->seam,1,1,rb->fp);
+        if (d == 0) rb->buff[rb->seam] = 0;  // always fill with something even if file done
+        (rb->seam)++;
+        if (rb->seam == READ_BUFFER_SIZE) rb->seam = 0;
+        i++;
+    } while (rb->cur != rb->seam);
+    rb->is_empty = 0;
 }
 
 
 void
 drain_read_buffer(READ_BUFFER *rb, int n, unsigned char *buff) {
-  int i;
-
-  for (i=0; i < n; i++) {
-    if (rb->is_empty) {
-      buff[i] = 0; // no more data to read
-      NSLog(@"buffer drained to 0!!!!");
+    int i;
+    
+    for (i=0; i < n; i++) {
+        if (rb->is_empty) {
+            buff[i] = 0; // no more data to read
+            NSLog(@"buffer drained to 0!!!!");
+        }
+        else {
+            buff[i] = rb->buff[rb->cur];
+            (rb->cur)++;
+            if (rb->cur == READ_BUFFER_SIZE) rb->cur = 0;
+            if (rb->seam == rb->cur) rb->is_empty = 1;
+        }
     }
-    else {
-      buff[i] = rb->buff[rb->cur];
-      (rb->cur)++;
-      if (rb->cur == READ_BUFFER_SIZE) rb->cur = 0;
-      if (rb->seam == rb->cur) rb->is_empty = 1;
-    }
-  }
 }
 
 
-  /*
-void
-fill_read_buffer(READ_BUFFER *rb) {
-  int n;
-
-  if ((seam+1)%READ_BUFFER_SIZE == cur) return;  // all full
-  if (seam+1 < cur) {
-    n = fread(rb->buff + rb->seam + 1, cur-seam-1,1,fp);
-    seam += n;
-    return;
-  }
-  n = fread(rb->buff + rb->seam + 1, READ_BUFFER_SIZE-seam-1,1,fp);
-  rb->seam += n;
-  if (rb->cur == 0 || rb->seam < (READ_BUFFER_SIZE-1)) return;
-  n = fread(rb->buff, cur-1,1,fp);
-  rb->seam = n;
-}
-  */
+/*
+ void
+ fill_read_buffer(READ_BUFFER *rb) {
+ int n;
+ 
+ if ((seam+1)%READ_BUFFER_SIZE == cur) return;  // all full
+ if (seam+1 < cur) {
+ n = fread(rb->buff + rb->seam + 1, cur-seam-1,1,fp);
+ seam += n;
+ return;
+ }
+ n = fread(rb->buff + rb->seam + 1, READ_BUFFER_SIZE-seam-1,1,fp);
+ rb->seam += n;
+ if (rb->cur == 0 || rb->seam < (READ_BUFFER_SIZE-1)) return;
+ n = fread(rb->buff, cur-1,1,fp);
+ rb->seam = n;
+ }
+ */
 
 #define BAS_BUFF 4096
 
 void
 buffer_audio_samples(int samps, int played) {  // write the next samps audio samples read from from the files
-  /* this should take the place of buffer_one_audio_frame() (to avoid parallel versions) */
-  unsigned char buff[BAS_BUFF], solo_upbuff[BAS_BUFF], orch_upbuff[2*BAS_BUFF], upbuff[2*BAS_BUFF];
-  int offset,j,b,ff,n,chan,which,note;
-  float t;
-  static int cur,hipos,lopos;
-  float fsolo[BAS_BUFF],forch[BAS_BUFF],lmix[BAS_BUFF],rmix[BAS_BUFF],pluck[BAS_BUFF];
-
-  //  offset = BYTES_PER_FRAME*(start_play_frame_num + play_frames_buffered);
-  //  if (mode != TEST_BALANCE_MODE) samples2floats(audiodata+offset, data, FRAMELEN);  // this seems to be just for the volume meter
-  if (samps > BAS_BUFF) { printf("can't deal with this many samps here\n"); exit(0); }
-  ff = start_play_frame_num + play_frames_buffered;  
-  b = samps*BYTES_PER_SAMPLE;
-  if (is_hires_audio) {
-    t = now();
-
-    /*                fread(solo_upbuff , b, 1, hires_solo_fp);  
-		      if (hires_orch_fp) fread(orch_upbuff , b, 1, hires_orch_fp);  // do I need to check the fp's?**/
-
-    drain_read_buffer(&solo_read_buff, b, solo_upbuff);
-    drain_read_buffer(&orch_read_buff, b, orch_upbuff);
-
-
-
-    if ((now()-t) > .01) printf("delay of %f reading audio from disk\n",now()-t);
-  } 
-  else sim_upsample_read(samps, played,solo_upbuff,orch_upbuff);
-  samples2floats(solo_upbuff,fsolo,samps);
-  samples2floats(orch_upbuff,forch,samps);
-  generate_pluck_buff(pluck, fsolo, played, samps);
- /* if (ensemble_in) {
-    if (clicks_in) add_channels(pluck, fsolo, fsolo, samps);
-    float_mix(fsolo,forch,lmix,rmix,samps);
-  }
-  else  float_mix(fsolo,pluck,lmix,rmix,samps); */
-  triple_float_mix(fsolo,forch,pluck,lmix,rmix,samps);
-
-  floats2samples(lmix,solo_upbuff,samps);  // these aren't really solo and orch, but rather left and right
-  floats2samples(rmix,orch_upbuff,samps);
-  interleave_channels(solo_upbuff, orch_upbuff, upbuff, samps);
-  n = write_samples(upbuff, samps);
+    /* this should take the place of buffer_one_audio_frame() (to avoid parallel versions) */
+    unsigned char buff[BAS_BUFF], solo_upbuff[BAS_BUFF], orch_upbuff[2*BAS_BUFF], upbuff[2*BAS_BUFF];
+    int offset,j,b,ff,n,chan,which,note;
+    float t;
+    static int cur,hipos,lopos;
+    float fsolo[BAS_BUFF],forch[BAS_BUFF],lmix[BAS_BUFF],rmix[BAS_BUFF],pluck[BAS_BUFF];
+    
+    //  offset = BYTES_PER_FRAME*(start_play_frame_num + play_frames_buffered);
+    //  if (mode != TEST_BALANCE_MODE) samples2floats(audiodata+offset, data, FRAMELEN);  // this seems to be just for the volume meter
+    if (samps > BAS_BUFF) { printf("can't deal with this many samps here\n"); exit(0); }
+    ff = start_play_frame_num + play_frames_buffered;
+    b = samps*BYTES_PER_SAMPLE;
+    if (is_hires_audio) {
+        t = now();
+        
+        /*                fread(solo_upbuff , b, 1, hires_solo_fp);
+         if (hires_orch_fp) fread(orch_upbuff , b, 1, hires_orch_fp);  // do I need to check the fp's?**/
+        
+        drain_read_buffer(&solo_read_buff, b, solo_upbuff);
+        drain_read_buffer(&orch_read_buff, b, orch_upbuff);
+        
+        
+        
+        if ((now()-t) > .01) printf("delay of %f reading audio from disk\n",now()-t);
+    }
+    else sim_upsample_read(samps, played,solo_upbuff,orch_upbuff);
+    samples2floats(solo_upbuff,fsolo,samps);
+    samples2floats(orch_upbuff,forch,samps);
+    generate_pluck_buff(pluck, fsolo, played, samps);
+    /* if (ensemble_in) {
+     if (clicks_in) add_channels(pluck, fsolo, fsolo, samps);
+     float_mix(fsolo,forch,lmix,rmix,samps);
+     }
+     else  float_mix(fsolo,pluck,lmix,rmix,samps); */
+    triple_float_mix(fsolo,forch,pluck,lmix,rmix,samps);
+    
+    floats2samples(lmix,solo_upbuff,samps);  // these aren't really solo and orch, but rather left and right
+    floats2samples(rmix,orch_upbuff,samps);
+    interleave_channels(solo_upbuff, orch_upbuff, upbuff, samps);
+    n = write_samples(upbuff, samps);
 }
 
 
@@ -1709,11 +1731,11 @@ buffer_audio_samples(int samps, int played) {  // write the next samps audio sam
 
 void
 buffer_audio() {
-
-  if (using_asio)  return; 
-  while (ready_for_play_frame(0)) {
-    buffer_audio_samples(IO_FACTOR*TOKENLEN, play_frames_buffered*IO_FACTOR*TOKENLEN);
-  }
+    
+    if (using_asio)  return;
+    while (ready_for_play_frame(0)) {
+        buffer_audio_samples(IO_FACTOR*TOKENLEN, play_frames_buffered*IO_FACTOR*TOKENLEN);
+    }
 }
 
 
@@ -1730,71 +1752,71 @@ jump_to_end() {
 
 static int
 is_frame_a_note(int f, int *n) {
-  int lo,hi,md,i;
-
-
-  for (i= firstnote; i <= lastnote; i++) 
-    if (f == score.solo.note[i].frames) { *n = i; return(1); }
-  return(0);
+    int lo,hi,md,i;
+    
+    
+    for (i= firstnote; i <= lastnote; i++)
+        if (f == score.solo.note[i].frames) { *n = i; return(1); }
+    return(0);
 }
 
 
 static int
 is_marked_frame(int f, int *n) {
-  int i;
-
-
-  //  if (f == 0 ) { *n = firstnote-1; return(1); }
-  if (f == 0 ) { *n = firstnote-1; return(clicks_in); }
-  for (i= firstnote; i <= lastnote; i++) {
-   // if (f == score.solo.note[i].frames && (show_index(i)) && (clicks_in == 1)) 
-    if (f == score.solo.note[i].frames && (show_index(i)) && (clicks_in || i == cur_nt))
-      { *n = i; return(1); }
-  }
-  return(0);
-
-  return(is_frame_a_note(f,n) && (show_index(*n)) && (clicks_in == 1));
+    int i;
+    
+    
+    //  if (f == 0 ) { *n = firstnote-1; return(1); }
+    if (f == 0 ) { *n = firstnote-1; return(clicks_in); }
+    for (i= firstnote; i <= lastnote; i++) {
+        // if (f == score.solo.note[i].frames && (show_index(i)) && (clicks_in == 1))
+        if (f == score.solo.note[i].frames && (show_index(i)) && (clicks_in || i == cur_nt))
+        { *n = i; return(1); }
+    }
+    return(0);
+    
+    return(is_frame_a_note(f,n) && (show_index(*n)) && (clicks_in == 1));
 }
 
 
 
 
 
-void 
+void
 repair_line_to_visible(int column) {
-  int n,f,c;
-
-  if (is_marked_frame(column,&n)) {
-    c = line_color(n);
-    add_line_to_visible(column, c);
-  }
-  else  restore_line_to_visible(column);
+    int n,f,c;
+    
+    if (is_marked_frame(column,&n)) {
+        c = line_color(n);
+        add_line_to_visible(column, c);
+    }
+    else  restore_line_to_visible(column);
 }
 
 
 
 void
 stop_playing() {
-  int draw_frame,i;
-
-  last_frame = start_play_frame_num + play_frames_played() + 1;
- if (mode != SYNTH_MODE && currently_playing == 0) return;
-  draw_frame = cur_play_frame_num; 
-
-
-for (i=0; i < 2; i++)   repair_line_to_visible(draw_frame-i);
+    int draw_frame,i;
+    
+    last_frame = start_play_frame_num + play_frames_played() + 1;
+    if (mode != SYNTH_MODE && currently_playing == 0) return;
+    draw_frame = cur_play_frame_num;
+    
+    
+    for (i=0; i < 2; i++)   repair_line_to_visible(draw_frame-i);
     // NEED THIS BACK (took out for synthesize test)
     // not sure about loop being needed
-
-  
+    
+    
     /*  for (i=0; i < SLICE_COLS; i++)   repair_line_on_bitmap(draw_frame-i,SLICE_COLS-1-i,vert_line_pair);
-      Spect->Image1->Canvas->Draw(draw_frame-scroll_pos-(SLICE_COLS-1),0,vert_line_pair);*/
-  currently_playing = 0;
-  //  performance_interrupted = 1; // added this in MAC:  maybe this shoudl take the place of currently_playing
-  //  blank_live_button();
-  /*  [nsTimer invalidate];
-      nsTimer   = nil;*/
-  end_playing();
+     Spect->Image1->Canvas->Draw(draw_frame-scroll_pos-(SLICE_COLS-1),0,vert_line_pair);*/
+    currently_playing = 0;
+    //  performance_interrupted = 1; // added this in MAC:  maybe this shoudl take the place of currently_playing
+    //  blank_live_button();
+    /*  [nsTimer invalidate];
+     nsTimer   = nil;*/
+    end_playing();
 }
 
 
@@ -1802,73 +1824,73 @@ for (i=0; i < 2; i++)   repair_line_to_visible(draw_frame-i);
 
 static void
 stop_action() {
-  if (mode == MIDI_MODE) { performance_interrupted = 1; return; }
-  if (mode == SYNTH_MODE){  performance_interrupted = 1; /*end_playing();*/  }  
-  stop_playing();
+    if (mode == MIDI_MODE) { performance_interrupted = 1; return; }
+    if (mode == SYNTH_MODE){  performance_interrupted = 1; /*end_playing();*/  }
+    stop_playing();
 }
 
 void
-quit_action() { // quit playing 
-  [nsTimer invalidate];
+quit_action() { // quit playing
+    [nsTimer invalidate];
     nsTimer = nil;
- //   [[[NSApplication sharedApplication] delegate] blank_live_button];
-  NSLog(@"stopped the timer");
-  stop_action();
+    //   [[[NSApplication sharedApplication] delegate] blank_live_button];
+    NSLog(@"stopped the timer");
+    stop_action();
 }
 
 void
 play_action() {
-   int ret,f0;
-
-  if (frames == 0) return;
-  if (currently_playing || live_locked) return;
-  
-  //[NSThread detachNewThreadSelector:@selector(aMethod:) toTarget:[MyObject class] withObject:nil];
-  mode = BASIC_PLAY_MODE;  // anyhting other than SYNTH_MODE
-  init_pluck();
-  if (audio_type == ON_SOLO) f0 = (cur_nt < firstnote) ? 0 : score.solo.note[cur_nt].frames;
-  cur_play_frame_num = start_play_frame_num =
-  (audio_type == ON_SOLO) ?  f0 :  score.midi.burst[cur_nt].frames;
-  buffer_hires_audio();  // sets is_hires_audio flag as appropriate  (this doesn't seem to buffer, but rather just fseek to right place)
-  /*  if (prepare_playing(NOMINAL_OUT_SR) == 0) {
-	message->Label1->Caption = "Couldn't access audio device.  If using external device under ASIO, make sure it is connected to computer";
-	message->Show();
-	return;
-	}*/
-  currently_playing = 1;
-  init_clock();
- // buffer_audio();  // buffer as many frames as buffer holds
-  //  Spect->PlayTimer->Enabled = 1;
-
-  /*    if (nsTimerRef) {
-        [nsTimerRef invalidate];
-        nsTimerRef   = nil; 
-	}*/
-  /*nsTimerRef   = */ 
-
- // prepare_playing();
-  
-        init_read_buffer(&solo_read_buff, hires_solo_fp);  fill_read_buffer(&solo_read_buff);
-	  init_read_buffer(&orch_read_buff, hires_orch_fp);  fill_read_buffer(&orch_read_buff);
-  start_coreaudio_play();  
-  //  [NSThread detachNewThreadSelector:@selector(playAnim:) toTarget:[MyNSView class] withObject:nil];
+    int ret,f0;
+    
+    if (frames == 0) return;
+    if (currently_playing || live_locked) return;
+    
+    //[NSThread detachNewThreadSelector:@selector(aMethod:) toTarget:[MyObject class] withObject:nil];
+    mode = BASIC_PLAY_MODE;  // anyhting other than SYNTH_MODE
+    init_pluck();
+    if (audio_type == ON_SOLO) f0 = (cur_nt < firstnote) ? 0 : score.solo.note[cur_nt].frames;
+    cur_play_frame_num = start_play_frame_num =
+    (audio_type == ON_SOLO) ?  f0 :  score.midi.burst[cur_nt].frames;
+    buffer_hires_audio();  // sets is_hires_audio flag as appropriate  (this doesn't seem to buffer, but rather just fseek to right place)
+    /*  if (prepare_playing(NOMINAL_OUT_SR) == 0) {
+     message->Label1->Caption = "Couldn't access audio device.  If using external device under ASIO, make sure it is connected to computer";
+     message->Show();
+     return;
+     }*/
+    currently_playing = 1;
+    init_clock();
+    // buffer_audio();  // buffer as many frames as buffer holds
+    //  Spect->PlayTimer->Enabled = 1;
+    
+    /*    if (nsTimerRef) {
+     [nsTimerRef invalidate];
+     nsTimerRef   = nil;
+     }*/
+    /*nsTimerRef   = */
+    
+    // prepare_playing();
+    
+    init_read_buffer(&solo_read_buff, hires_solo_fp);  fill_read_buffer(&solo_read_buff);
+    init_read_buffer(&orch_read_buff, hires_orch_fp);  fill_read_buffer(&orch_read_buff);
+    start_coreaudio_play();
+    //  [NSThread detachNewThreadSelector:@selector(playAnim:) toTarget:[MyNSView class] withObject:nil];
     [NSThread detachNewThreadSelector:@selector(playRead:) toTarget:[MyNSView class] withObject:nil];
-
-
+    
+    
     if (nsTimer) NSLog(@"timer already running ...");
     
     /* NB .03 gives smoother animation than .01, but don't really know
-        why.  Need to draw frame about every .031 secs, but this seems
-        to run the risk of getting behind */
-     nsTimer =  [NSTimer scheduledTimerWithTimeInterval:0.03 
-                                                    target:view_self
-                                                  selector:@selector(play_timer) 
-                                                  userInfo:NULL 
-						  repeats:YES];
-
-
-
-
+     why.  Need to draw frame about every .031 secs, but this seems
+     to run the risk of getting behind */
+    nsTimer =  [NSTimer scheduledTimerWithTimeInterval:0.03
+                                                target:view_self
+                                              selector:@selector(play_timer)
+                                              userInfo:NULL
+                                               repeats:YES];
+    
+    
+    
+    
 }
 
 
@@ -1880,20 +1902,20 @@ play_action() {
 
 static void
 update_spect_image(int draw_frame) {
-  int width,color,i,start;
-         
-  add_line_to_visible(draw_frame, MOVING_LINE_COLOR);
-
-  repair_line_to_visible(draw_frame-1);
-
-
-  //  for (i=0; i < SLICE_COLS-1; i++)  if (draw_frame - i - 1 >= 0) repair_line_on_bitmap(draw_frame-1-i,SLICE_COLS-2-i,vert_line_pair);
-  scroll_if_needed(draw_frame+1,1);
-
-  /*  width = Spect->ScrollBox1->ClientRect.Right;  
-  if (draw_frame < scroll_pos) {printf("return premature in update_spect_image\n"); return; }
-  if (draw_frame >= scroll_pos+width) {printf("return premature in update_spect_image\n"); return; }
-  Spect->Image1->Canvas->Draw(draw_frame-scroll_pos-(SLICE_COLS-1),0,vert_line_pair);*/
+    int width,color,i,start;
+    
+    add_line_to_visible(draw_frame, MOVING_LINE_COLOR);
+    
+    repair_line_to_visible(draw_frame-1);
+    
+    
+    //  for (i=0; i < SLICE_COLS-1; i++)  if (draw_frame - i - 1 >= 0) repair_line_on_bitmap(draw_frame-1-i,SLICE_COLS-2-i,vert_line_pair);
+    scroll_if_needed(draw_frame+1,1);
+    
+    /*  width = Spect->ScrollBox1->ClientRect.Right;
+     if (draw_frame < scroll_pos) {printf("return premature in update_spect_image\n"); return; }
+     if (draw_frame >= scroll_pos+width) {printf("return premature in update_spect_image\n"); return; }
+     Spect->Image1->Canvas->Draw(draw_frame-scroll_pos-(SLICE_COLS-1),0,vert_line_pair);*/
 }
 
 
@@ -1902,42 +1924,42 @@ update_spect_image(int draw_frame) {
 
 int  /* returns boolean if continuing */
 gui_spect_play_function() {
-  float next_frame,call_time,interval,t;
-  unsigned char buff[(TOKENLEN+1)*BYTES_PER_SAMPLE*2];
-  unsigned char upbuff[IO_FACTOR*TOKENLEN*BYTES_PER_SAMPLE*2];
-  unsigned char orch_upbuff[IO_FACTOR*TOKENLEN*BYTES_PER_SAMPLE*2];
-  unsigned char solo_upbuff[IO_FACTOR*TOKENLEN*BYTES_PER_SAMPLE*2];
-  char comment[500];
-  int frame_diff,offset,draw_frame,j,b,f,k,n,i,play_frame;
-
-
-  play_frame = start_play_frame_num + play_frames_played();  // this change made 12-09
-  if (play_frame >= frames-1) {
-    //    stop_playing();
- //     [[[NSApplication sharedApplication] delegate] StopPlayingAction:nil];
-    //quit_action(0);  // stop timer as well
-    return(0);
-  }
-  if (currently_playing == 0) return(0);
-  offset = BYTES_PER_FRAME*(start_play_frame_num + play_frames_played());
-  if (mode != TEST_BALANCE_MODE) samples2floats(audiodata+offset, data, FRAMELEN);  // this seems to be just for the volume meter
-
-  //if (using_asio == 0)   buffer_audio_samples(IO_FACTOR*TOKENLEN, play_frames_buffered*IO_FACTOR*TOKENLEN);
-  //    if ((play_frames_played()%5) == 0) [[NSApp delegate] setVolumeMeter];
+    float next_frame,call_time,interval,t;
+    unsigned char buff[(TOKENLEN+1)*BYTES_PER_SAMPLE*2];
+    unsigned char upbuff[IO_FACTOR*TOKENLEN*BYTES_PER_SAMPLE*2];
+    unsigned char orch_upbuff[IO_FACTOR*TOKENLEN*BYTES_PER_SAMPLE*2];
+    unsigned char solo_upbuff[IO_FACTOR*TOKENLEN*BYTES_PER_SAMPLE*2];
+    char comment[500];
+    int frame_diff,offset,draw_frame,j,b,f,k,n,i,play_frame;
     
-  //  NSSlider *xxx = [[NSApp delegate]
-  //  [[NSApp delegate] setVolumeMeter:val 50];
- 
     
- // if ((play_frames_played()%5) == 0) [[NSApp delegate] setVolumeMeter];
+    play_frame = start_play_frame_num + play_frames_played();  // this change made 12-09
+    if (play_frame >= frames-1) {
+        //    stop_playing();
+        //     [[[NSApplication sharedApplication] delegate] StopPlayingAction:nil];
+        //quit_action(0);  // stop timer as well
+        return(0);
+    }
+    if (currently_playing == 0) return(0);
+    offset = BYTES_PER_FRAME*(start_play_frame_num + play_frames_played());
+    if (mode != TEST_BALANCE_MODE) samples2floats(audiodata+offset, data, FRAMELEN);  // this seems to be just for the volume meter
     
-   
+    //if (using_asio == 0)   buffer_audio_samples(IO_FACTOR*TOKENLEN, play_frames_buffered*IO_FACTOR*TOKENLEN);
+    //    if ((play_frames_played()%5) == 0) [[NSApp delegate] setVolumeMeter];
+    
+    //  NSSlider *xxx = [[NSApp delegate]
+    //  [[NSApp delegate] setVolumeMeter:val 50];
+    
+    
+    // if ((play_frames_played()%5) == 0) [[NSApp delegate] setVolumeMeter];
+    
+    
     //  [UIApplication sharedApplication];
-      //[AppDelegate showVolMeter];  // change made 12-09 to accomodate asio
-  draw_frame = cur_play_frame_num; 
-  update_spect_image(draw_frame);
-  cur_play_frame_num++;
-  return(1); 
+    //[AppDelegate showVolMeter];  // change made 12-09 to accomodate asio
+    draw_frame = cur_play_frame_num;
+    update_spect_image(draw_frame);
+    cur_play_frame_num++;
+    return(1);
 }
 
 
@@ -1947,12 +1969,12 @@ gui_spect_play_function() {
 @implementation MyNSView
 
 -(void) get_spect_page_no_args {
-  get_spect_page(scroll_pos, spect_wd, &spect_page);
+    get_spect_page(scroll_pos, spect_wd, &spect_page);
 }
 
 
-- (id)initWithFrame:(NSRect)pFrameRect {   
- 
+- (id)initWithFrame:(NSRect)pFrameRect {
+    
     if (! (self = [super initWithFrame:pFrameRect])) {
         NSLog(@"MyView initWithFrame *Error*");
         return self;
@@ -1964,24 +1986,24 @@ gui_spect_play_function() {
 }
 
 - (void)awakeFromNib {
-  unsigned char *ptr;
+    unsigned char *ptr;
     
     
-   // [[self window] setAcceptsMouseMovedEvents:YES];  // think more carefully about this since don't want to flood computation with unneeded events
+    // [[self window] setAcceptsMouseMovedEvents:YES];  // think more carefully about this since don't want to flood computation with unneeded events
     [self setAcceptsTouchEvents:YES];  // maybe only want this in more limited context, like for notation selectng
     
 #ifdef NOTATION
     bigBitmap = [[NSBitmapImageRep alloc]
-                           initWithBitmapDataPlanes:NULL
-                           pixelsWide: MAX_SPECT_WIDTH
-                           pixelsHigh:  NOTATION_BUFFER_SIZE 
-                           bitsPerSample:8 
-                           samplesPerPixel:3
-                           hasAlpha:NO
-                           isPlanar:NO 
-                           colorSpaceName:@"NSCalibratedRGBColorSpace" 
-                           bytesPerRow:0 
-                           bitsPerPixel:0];
+                 initWithBitmapDataPlanes:NULL
+                 pixelsWide: MAX_SPECT_WIDTH
+                 pixelsHigh:  NOTATION_BUFFER_SIZE
+                 bitsPerSample:8
+                 samplesPerPixel:3
+                 hasAlpha:NO
+                 isPlanar:NO
+                 colorSpaceName:@"NSCalibratedRGBColorSpace"
+                 bytesPerRow:0
+                 bitsPerPixel:0];
 #else
     bigBitmap = [[NSBitmapImageRep alloc]
                  initWithBitmapDataPlanes:NULL
@@ -1994,7 +2016,7 @@ gui_spect_play_function() {
                  colorSpaceName:@"NSCalibratedRGBColorSpace"
                  bytesPerRow:0
                  bitsPerPixel:0];
-
+    
 #endif
     
     
@@ -2005,9 +2027,9 @@ gui_spect_play_function() {
     SPECT_HT = nsRectFrameRect.size.height;
     bitmap = bigBitmap;
     view_self = self;
-
- 
-
+    
+    
+    
 } // end awakeFromNib
 
 
@@ -2019,13 +2041,13 @@ gui_spect_play_function() {
 
 - (void) displaySpect {
     
-  //  [[[NSApplication sharedApplication] delegate] showMainWindow];
-
+    //  [[[NSApplication sharedApplication] delegate] showMainWindow];
+    
     [[[NSApplication sharedApplication] delegate] backgroundTask:show_spect Text:"Computing Spectrogram" Indeterminate:FALSE];
     
     [[[NSApplication sharedApplication] delegate] enableMarkerControls];
-
-  //    show_spect();
+    
+    //    show_spect();
     [self show_the_spect];
 }
 
@@ -2033,12 +2055,12 @@ gui_spect_play_function() {
 
 
 -(void) redraw_markers {
-  if (clicks_in == 0) return;
+    if (clicks_in == 0) return;
     [self show_the_spect];
-  
-  //  init_visible(); 
-  //  Spect->Image1->Canvas->Draw(0,0,visible);
-  
+    
+    //  init_visible();
+    //  Spect->Image1->Canvas->Draw(0,0,visible);
+    
 }
 
 
@@ -2053,12 +2075,12 @@ gui_spect_play_function() {
     
     if (nsTimerRef) {
         [nsTimerRef invalidate];
-        nsTimerRef   = nil; 
+        nsTimerRef   = nil;
     }
-    nsTimerRef   = [NSTimer scheduledTimerWithTimeInterval:0.05 
-                                                    target:self 
-                                                  selector:@selector(paintGradientBitmap) 
-                                                  userInfo:NULL 
+    nsTimerRef   = [NSTimer scheduledTimerWithTimeInterval:0.05
+                                                    target:self
+                                                  selector:@selector(paintGradientBitmap)
+                                                  userInfo:NULL
                                                    repeats:YES];
     
 } // end startAnimation
@@ -2102,7 +2124,7 @@ static void
 add_dotted_line(int h) {
     Byte *ptr,*row;
     int i,k,bpr;
-
+    
     ptr = [bitmap bitmapData];
     bpr = [bitmap bytesPerRow];
     row = ptr + h*bpr;
@@ -2170,14 +2192,14 @@ add_dotted_line(int h) {
     int i,j;
     
     for (i=1; i < score.measdex.num; i++) if (score.measdex.measure[i].meas >= meas) break;
-  //  if (i > score.measdex.num) i = score.measdex.num; //return;
+    //  if (i > score.measdex.num) i = score.measdex.num; //return;
     j = lefteq_solo_index(score.measdex.measure[i].wholerat);
     for (j=firstnote; j <= lastnote; j++) {
         if (rat_cmp(score.solo.note[j].wholerat,score.measdex.measure[i].wholerat) > 0) break;
         if (score.solo.note[j].frames <= 0) break;
     }
     j--;
-   // highlight_neighbor_note(j-cur_nt);
+    // highlight_neighbor_note(j-cur_nt);
     highlight_note_with_index(j);
 }
 
@@ -2187,74 +2209,74 @@ add_dotted_line(int h) {
 
 
 - (void) play_timer {
-  int done,draw_frame,f,t;
-  float p;
-  static int locked=0;
-  static int last_cur_note;
-
- // NSLog(@"timer callback cur_play_frame_num = %d",cur_play_frame_num);
-  //  NSLog(@"timer");
-
-  //  if (mode == SYNTH_MODE) { synth_timer(); return; }
-  //  if (mode == PV_MODE) { pv_timer(); return; }
-  if (currently_playing == 0) return;
+    int done,draw_frame,f,t;
+    float p;
+    static int locked=0;
+    static int last_cur_note;
+    
+    // NSLog(@"timer callback cur_play_frame_num = %d",cur_play_frame_num);
+    //  NSLog(@"timer");
+    
+    //  if (mode == SYNTH_MODE) { synth_timer(); return; }
+    //  if (mode == PV_MODE) { pv_timer(); return; }
+    if (currently_playing == 0) return;
     if (locked) { NSLog(@"timer locked out"); return; }
-  locked = 1;
- 
-
-  f = cur_play_frame_num - start_play_frame_num;
-  if (ready_for_play_frame(f)) {  // only 1 iteration per timer call
-     done =  gui_spect_play_function();
-   // [view_self setNeedsDisplay:YES];
-   }
+    locked = 1;
+    
+    
+    f = cur_play_frame_num - start_play_frame_num;
+    if (ready_for_play_frame(f)) {  // only 1 iteration per timer call
+        done =  gui_spect_play_function();
+        // [view_self setNeedsDisplay:YES];
+    }
     
     t = play_frames_played();
-    if (abs(t -f) > 5) { 
+    if (abs(t -f) > 5) {
         // in case the playing gets out of sync as with resize of window
         repair_line_to_visible(cur_play_frame_num-1);
         cur_play_frame_num = start_play_frame_num + t;
         NSLog(@"out of sync");
     }
-   
- /*  while (1) {
+    
+    /*  while (1) {
      f = cur_play_frame_num - start_play_frame_num;
      if (ready_for_play_frame(f) == 0) break;
-     gui_spect_play_function();  
-   }*/
+     gui_spect_play_function();
+     }*/
     
     
     
-  if (mode != SYNTH_MODE) { locked = 0; return; }
-
-  
- 
-  if (last_cur_note != cur_note && score.solo.note[cur_note-1].treating_as_observed) {  //detected new note in Listen
-    draw_frame = (int) secs2tokens(score.solo.note[cur_note-1].on_line_secs);
-    add_mark_to_visible(draw_frame, COLOR_GREEN,0,25);
-    last_cur_note = cur_note;
-  }
-
-  p = secs2tokens(score.midi.burst[cur_accomp].ideal_secs);
-  if (p == HUGE_VAL) { locked = 0; return; }
-  t = (int) secs2tokens(score.midi.burst[cur_accomp].ideal_secs);
-  if (t != prediction_target[cur_accomp]) {
-    add_mark_to_visible(prediction_target[cur_accomp], COLOR_BLACK,25,50);
-    add_mark_to_visible(t, COLOR_RED,25,50);
-    prediction_target[cur_accomp] = t;
-  }
-
-
-
-
-  //   draw_frame = start_play_frame_num + play_frames_played();
-   locked = 0;
+    if (mode != SYNTH_MODE) { locked = 0; return; }
+    
+    
+    
+    if (last_cur_note != cur_note && score.solo.note[cur_note-1].treating_as_observed) {  //detected new note in Listen
+        draw_frame = (int) secs2tokens(score.solo.note[cur_note-1].on_line_secs);
+        add_mark_to_visible(draw_frame, COLOR_GREEN,0,25);
+        last_cur_note = cur_note;
+    }
+    
+    p = secs2tokens(score.midi.burst[cur_accomp].ideal_secs);
+    if (p == HUGE_VAL) { locked = 0; return; }
+    t = (int) secs2tokens(score.midi.burst[cur_accomp].ideal_secs);
+    if (t != prediction_target[cur_accomp]) {
+        add_mark_to_visible(prediction_target[cur_accomp], COLOR_BLACK,25,50);
+        add_mark_to_visible(t, COLOR_RED,25,50);
+        prediction_target[cur_accomp] = t;
+    }
+    
+    
+    
+    
+    //   draw_frame = start_play_frame_num + play_frames_played();
+    locked = 0;
 }
 
 
 - (void) paintGradientBitmap {
     // green and blue values are a function of
     // their position within the nsRectFrameRect.
-    // red has the same value throughout the picture 
+    // red has the same value throughout the picture
     // but changes value with each iteration
     cgFloatRed   += cgFloatRedUpdate;
     if (cgFloatRed > 1.0) {
@@ -2272,35 +2294,35 @@ add_dotted_line(int h) {
     CGFloat zFloatFrameHeight = (CGFloat)nsRectFrameRect.size.height;
     CGFloat zFloatFrameWidth  = (CGFloat)nsRectFrameRect.size.width;
     NSUInteger   zIntRed   = round(255.0 * cgFloatRed);
-    NSInteger y; 
-    CGFloat   zFloatY; 
-    for (y = 0; y < nsRectFrameRect.size.height; y++) { 
+    NSInteger y;
+    CGFloat   zFloatY;
+    for (y = 0; y < nsRectFrameRect.size.height; y++) {
         zFloatY = (CGFloat)y;
-        NSInteger x; 
-        CGFloat   zFloatX; 
-        NSUInteger zIntBlue = round((255.0 / zFloatFrameHeight) * zFloatY); 
+        NSInteger x;
+        CGFloat   zFloatX;
+        NSUInteger zIntBlue = round((255.0 / zFloatFrameHeight) * zFloatY);
         
-        for (x = 0; x < nsRectFrameRect.size.width; x++) { 
+        for (x = 0; x < nsRectFrameRect.size.width; x++) {
             zFloatX = (CGFloat)x;
             NSUInteger zIntGreen = round((255.0/zFloatFrameWidth)*zFloatX);
             NSUInteger zColourAry[3] = {zIntRed,zIntGreen,zIntBlue};
-            [bigBitmap setPixel:zColourAry atX:x y:y];      
-        } // end for x 
+            [bigBitmap setPixel:zColourAry atX:x y:y];
+        } // end for x
         
-    } // end for y 
+    } // end for y
     
     
     [self setNeedsDisplay:YES];
     
-} // end paintGradientBitmap 
+} // end paintGradientBitmap
 
 
 static void
 abcde() {
     int i;
     NSUInteger zColourAry[3] = {255,0,0};
-    for (i=0; i < SPECT_HT; i++) 
-      [bitmap setPixel:zColourAry atX:i y:100]; 
+    for (i=0; i < SPECT_HT; i++)
+        [bitmap setPixel:zColourAry atX:i y:100];
 }
 
 - (void) show_the_spect {
@@ -2308,40 +2330,40 @@ abcde() {
     int x,y,i;
     unsigned char *ptr;
     
-   
-  //  clear_piano_keys();
-   
+    
+    //  clear_piano_keys();
+    
     make_spect_visible();
     [view_self markersChange];
     draw_ruler();
     draw_pitch(1);
     
     image_set = 1;
-   // [self setNeedsDisplay:YES];
+    // [self setNeedsDisplay:YES];
     [view_self setNeedsDisplayInRect:CGRectMake(0,0,spect_wd,SPECT_HT)];
-   // [self setNeedsDisplay:YES];
+    // [self setNeedsDisplay:YES];
     return;
-
+    
     //    init_visible_page([bigBitmap bitmapData], spect_wd,SPECT_HT);
     //    ptr = [bigBitmap bitmapData];
     //    ptr = visible_page.buff;
-    for (y = 0; y < nsRectFrameRect.size.height; y++) { 
+    for (y = 0; y < nsRectFrameRect.size.height; y++) {
         for (x = 0; x < nsRectFrameRect.size.width; x++) {
             printf("y = %d x = %d val = %d\n",y,x,spect_page.ptr[x][y]);
-      //      NSLog(spect_page.ptr[y][x]);
+            //      NSLog(spect_page.ptr[y][x]);
             r = g = b = spect_page.ptr[x][y];
             NSUInteger zColourAry[3] = {r,g,b};
-	                [bigBitmap setPixel:zColourAry atX:x y:y];      
-	    //	    	    ptr = visible_page.scan_line[y] + 3*x;
-	    //	    ptr[0] = ptr[1] = ptr[2] = r;
-        }         
-    }     
-  //  for (i=0; i < 100; i++) visible_page.buff[i*(spect_wd*3+8)] = 255;
-   // abcde();
+            [bigBitmap setPixel:zColourAry atX:x y:y];
+            //	    	    ptr = visible_page.scan_line[y] + 3*x;
+            //	    ptr[0] = ptr[1] = ptr[2] = r;
+        }
+    }
+    //  for (i=0; i < 100; i++) visible_page.buff[i*(spect_wd*3+8)] = 255;
+    // abcde();
     highlight_notes();
     [self setNeedsDisplay:YES];
     
-} 
+}
 
 - (BOOL)acceptsFirstResponder
 {
@@ -2351,31 +2373,31 @@ abcde() {
 
 
 -(void) viewDidEndLiveResize   {
-  int h,w;
-  PAGE_STAFF tp,bt;
-  
+    int h,w;
+    PAGE_STAFF tp,bt;
+    
 #ifdef NOTATION
     tp = first_showing_line();
     fill_notation_scroll_buffer(tp.page,tp.staff);
     notation_scroll = 0;
-    //    display_first_page(); 
+    //    display_first_page();
     [view_self setNeedsDisplay: YES];
 #endif
-  [[[NSApplication sharedApplication] delegate] mainWindowResized];
+    [[[NSApplication sharedApplication] delegate] mainWindowResized];
     
     h =  [[[NSApplication sharedApplication] delegate] mainWindowHeight];
     w =  [[[NSApplication sharedApplication] delegate] mainWindowWidth];
-  //  [Spectrogram frame];
-  NSLog(@"end live resize height width %d %d",h,w);
+    //  [Spectrogram frame];
+    NSLog(@"end live resize height width %d %d",h,w);
 }
 
 
 void
- pause_audio() {
-  //stop_action();
-     quit_action();
-  jump_to_end();
- }
+pause_audio() {
+    //stop_action();
+    quit_action();
+    jump_to_end();
+}
 
 
 
@@ -2389,9 +2411,9 @@ discard_tail() {
         m = score.solo.note[i].frames;
         restore_line_to_visible(m);
     }
-    lastnote = cur_nt; 
-    end_pos = score.solo.note[cur_nt].wholerat; 
- 
+    lastnote = cur_nt;
+    end_pos = score.solo.note[cur_nt].wholerat;
+    
 }
 
 
@@ -2404,21 +2426,21 @@ discard_tail() {
     //[super keyDown: pEvent];
     
     if (live_locked) return; // would be better if we could just disable the whole window ...
-   
+    
     NSString *cmd = [pEvent characters];
     c = [cmd characterAtIndex:0];
- //    NSLog(@"got key %c %d",c,c);
+    //    NSLog(@"got key %c %d",c,c);
     
-   /* if ((c == 'l' || c == 'L' || c == 'r' || c == 'R') && (upgrade_purchased == 0)) {
-         [[[NSApplication sharedApplication] delegate] upgradeAlert];
-      [[NSAlert alertWithMessageText:@"Requires upgrade"
-                             defaultButton:@"Ok"
-                           alternateButton:nil
-                               otherButton:nil
-                 informativeTextWithFormat:@"You must purchase the upgrade to use this feature"] runModal];
-            return;
-    } */
-
+    /* if ((c == 'l' || c == 'L' || c == 'r' || c == 'R') && (upgrade_purchased == 0)) {
+     [[[NSApplication sharedApplication] delegate] upgradeAlert];
+     [[NSAlert alertWithMessageText:@"Requires upgrade"
+     defaultButton:@"Ok"
+     alternateButton:nil
+     otherButton:nil
+     informativeTextWithFormat:@"You must purchase the upgrade to use this feature"] runModal];
+     return;
+     } */
+    
     
     
     
@@ -2426,14 +2448,14 @@ discard_tail() {
     else if (c == 'F') highlight_neighbor_note(10);
     else if (c == 'b') highlight_neighbor_note(-1);
     else if (c == 'B') highlight_neighbor_note(-10);
-    else if (c == 'r') move_cur_nt(1);   
-    else if (c == 'l') move_cur_nt(-1);   
-    else if (c == 'R') move_cur_nt(50);   
-    else if (c == 'L') move_cur_nt(-50);   
+    else if (c == 'r') move_cur_nt(1);
+    else if (c == 'l') move_cur_nt(-1);
+    else if (c == 'R') move_cur_nt(50);
+    else if (c == 'L') move_cur_nt(-50);
     else if (c == 'u') unmark_note();
     else if (c == 'q') [[[NSApplication sharedApplication] delegate] StopPlayingAction:nil];
     /*quit_action();*/
-   
+    
     if (currently_playing) return;
     
     
@@ -2441,12 +2463,12 @@ discard_tail() {
     if (c == 'p') [[[NSApplication sharedApplication] delegate] StartPlayingAction:nil];
     /* play_action();*/
     else if (c == 'e') jump_to_end();
-    else if (c == '+') highlight_notes();   
-    else if (c == '-') unhighlight_notes();  
+    else if (c == '+') highlight_notes();
+    else if (c == '-') unhighlight_notes();
     else if (c == 5) discard_tail();  // control e
     
-   //  [self setNeedsDisplay:YES];
-   // [self setNeedsDisplayInRect:CGRectMake(0,0,spect_wd,SPECT_HT)];
+    //  [self setNeedsDisplay:YES];
+    // [self setNeedsDisplayInRect:CGRectMake(0,0,spect_wd,SPECT_HT)];
 }
 
 
@@ -2465,28 +2487,28 @@ PAGE_STAFF top_line,bot_line;  // what is showing on the
 
 
 - (void) addRulerNumbers {
-      NSString *s;
+    NSString *s;
     RATIONAL q;
     int i,m,j,k,frame,is_solo,m_no_rpt;
     
-     if (frames == 0) return;
+    if (frames == 0) return;
     if (ruler.num == 0) return;
     
     NSMutableDictionary *textAttrib = [[NSMutableDictionary alloc] init];
     [textAttrib setObject:[NSFont fontWithName:@"Helvetica Light" size:10] forKey:NSFontAttributeName];
     [textAttrib setObject:[NSColor lightGrayColor] forKey:NSForegroundColorAttributeName];
     
-  //  NSLog(@"addRulerNumbers");
+    //  NSLog(@"addRulerNumbers");
     for (i=0; i < ruler.num; i++) {
         q = wholerat2measrat(ruler.el[i].wholerat);
         if (q.num != 0) continue;
-       /* m = wholerat2measnum(ruler.el[i].wholerat);
-        m_no_rpt = score.measdex.measure[m].meas;*/
+        /* m = wholerat2measnum(ruler.el[i].wholerat);
+         m_no_rpt = score.measdex.measure[m].meas;*/
         k = ruler.el[i].meas_index;
         m_no_rpt = score.measdex.measure[k].meas;
         j = ruler.el[i].index;
         is_solo = ruler.el[i].is_solo;
-      //  if (is_solo) continue;
+        //  if (is_solo) continue;
         //frame = (is_solo) ? score.solo.note[j].frames : score.midi.burst[j].frames;
         frame = (is_solo) ? score.solo.note[j].frames : ruler.el[i].frames;
         if (frame == 0) continue;  // this is an unrecognized note
@@ -2496,98 +2518,98 @@ PAGE_STAFF top_line,bot_line;  // what is showing on the
         [s drawAtPoint:NSMakePoint((frame-scroll_pos)+5,SPECT_HT-RULER_HT + 3) withAttributes:textAttrib];
         
     }
-   
     
-     
+    
+    
 }
 
 
 - (void)drawRect:(NSRect)dstRect { /* origin is the LOWER left */
-  NSPoint p;
+    NSPoint p;
     NSRect srcRect;
     int overflow;
     
-        
-   /* pRect.origin.x = pRect.origin.y = 0; pRect.size.width = pRect.size.height = 200;
-    destRect = pRect; destRect.size.width = 200; destRect.size.height = 500;*/
+    
+    /* pRect.origin.x = pRect.origin.y = 0; pRect.size.width = pRect.size.height = 200;
+     destRect = pRect; destRect.size.width = 200; destRect.size.height = 500;*/
     
     srcRect = dstRect; srcRect.origin.y = NOTATION_BUFFER_SIZE-SPECT_HT - notation_scroll;
- //   NSLog(@"%d",SPECT_HT);
-      [NSGraphicsContext saveGraphicsState];
+    //   NSLog(@"%d",SPECT_HT);
+    [NSGraphicsContext saveGraphicsState];
     
-   
+    
     [bigBitmap drawInRect:dstRect  // destination rect
                  fromRect:dstRect  // source rect (rescales if not same dimensions
                 operation:NSCompositeCopy
                  fraction:1.0
            respectFlipped:NO
                     hints:nil];
-   
-  if (dstRect.origin.y + dstRect.size.height > SPECT_HT - RULER_HT)
-    [self addRulerNumbers];  // if not redrawn every time the spectrogram drawing will write over the numbers --- they are not part of the image.
-   
-  /*  NSString *s = @"hello";
     
-    NSMutableDictionary *textAttrib = [[NSMutableDictionary alloc] init];
-    [textAttrib setObject:[NSFont fontWithName:@"Helvetica Light" size:15] forKey:NSFontAttributeName];
-    [textAttrib setObject:[NSColor yellowColor] forKey:NSForegroundColorAttributeName];
-   
+    if (dstRect.origin.y + dstRect.size.height > SPECT_HT - RULER_HT)
+        [self addRulerNumbers];  // if not redrawn every time the spectrogram drawing will write over the numbers --- they are not part of the image.
     
-    [[NSColor redColor] set];
-    [s drawAtPoint:NSMakePoint(100,100) withAttributes:textAttrib];*/
-
-   
+    /*  NSString *s = @"hello";
+     
+     NSMutableDictionary *textAttrib = [[NSMutableDictionary alloc] init];
+     [textAttrib setObject:[NSFont fontWithName:@"Helvetica Light" size:15] forKey:NSFontAttributeName];
+     [textAttrib setObject:[NSColor yellowColor] forKey:NSForegroundColorAttributeName];
+     
+     
+     [[NSColor redColor] set];
+     [s drawAtPoint:NSMakePoint(100,100) withAttributes:textAttrib];*/
     
-   // pRect = CGRectMake(0,0,400,500);
-   
-   
-   // [bigBitmap drawInRect:dstRect fromRect:NSZeroRect operation:NSCompositeCopy fraction:1.0];
     
-   // [bigBitmap drawAtPoint:p fromRect:pRect operation:NSCompositeCopy fraction:1.0]; 
- 
+    
+    // pRect = CGRectMake(0,0,400,500);
+    
+    
+    // [bigBitmap drawInRect:dstRect fromRect:NSZeroRect operation:NSCompositeCopy fraction:1.0];
+    
+    // [bigBitmap drawAtPoint:p fromRect:pRect operation:NSCompositeCopy fraction:1.0];
+    
     /*overflow = (notation_scroll+SPECT_HT) - NOTATION_BUFFER_SIZE;
-    if (overflow > 0) {
-        srcRect.size.height = dstRect.size.height = SPECT_HT-overflow;
-        srcRect.origin.y = 0;
-        dstRect.origin.y = overflow;
-        [bigBitmap drawInRect:dstRect  // draw the regular portion of the rectangle
-                     fromRect:srcRect  
-                    operation:NSCompositeCopy
-                     fraction:1.0
-               respectFlipped:NO
-                        hints:nil];
-        
-        srcRect.origin.y = NOTATION_BUFFER_SIZE-overflow;
-        srcRect.size.height = dstRect.size.height = overflow;
-        dstRect.origin.y = 0;
-        [bigBitmap drawInRect:dstRect  // draw the wrap around portion
-                     fromRect:srcRect
-                    operation:NSCompositeCopy
-                     fraction:1.0
-               respectFlipped:NO
-                        hints:nil];
-    }
-    else {
-        
-    [bigBitmap drawInRect:dstRect  // destination rect
-                           fromRect:srcRect  // source rect (rescales if not same dimensions
-                          operation:NSCompositeCopy
-                           fraction:1.0
-                     respectFlipped:NO
-                              hints:nil];
-    } */
+     if (overflow > 0) {
+     srcRect.size.height = dstRect.size.height = SPECT_HT-overflow;
+     srcRect.origin.y = 0;
+     dstRect.origin.y = overflow;
+     [bigBitmap drawInRect:dstRect  // draw the regular portion of the rectangle
+     fromRect:srcRect
+     operation:NSCompositeCopy
+     fraction:1.0
+     respectFlipped:NO
+     hints:nil];
+     
+     srcRect.origin.y = NOTATION_BUFFER_SIZE-overflow;
+     srcRect.size.height = dstRect.size.height = overflow;
+     dstRect.origin.y = 0;
+     [bigBitmap drawInRect:dstRect  // draw the wrap around portion
+     fromRect:srcRect
+     operation:NSCompositeCopy
+     fraction:1.0
+     respectFlipped:NO
+     hints:nil];
+     }
+     else {
+     
+     [bigBitmap drawInRect:dstRect  // destination rect
+     fromRect:srcRect  // source rect (rescales if not same dimensions
+     operation:NSCompositeCopy
+     fraction:1.0
+     respectFlipped:NO
+     hints:nil];
+     } */
     
     
-       /*   [bigBitmap drawInRect:dstRect
-                           fromRect:dstRect
-			   operation:NSCompositeCopy fraction:1.0]; */
-                        
+    /*   [bigBitmap drawInRect:dstRect
+     fromRect:dstRect
+     operation:NSCompositeCopy fraction:1.0]; */
     
-  /*  [bigBitmap drawAtPoint:pRect.origin fromRect:pRect
-                           operation:NSCompositeCopy fraction:1.0
-                      respectFlipped:NO
-                               hints:nil];*/
-                      
+    
+    /*  [bigBitmap drawAtPoint:pRect.origin fromRect:pRect
+     operation:NSCompositeCopy fraction:1.0
+     respectFlipped:NO
+     hints:nil];*/
+    
     
     [NSGraphicsContext restoreGraphicsState];
     
@@ -2600,59 +2622,59 @@ PAGE_STAFF top_line,bot_line;  // what is showing on the
     
     currently_playing = 1;
     for (i=0; i < score.midi.num; i++) prediction_target[i] = 0;
-     nsTimer =  [NSTimer scheduledTimerWithTimeInterval:0.01 
-                                                    target:view_self
-                                                  selector:@selector(play_timer) 
-                                                  userInfo:NULL 
-						  repeats:YES];
-
+    nsTimer =  [NSTimer scheduledTimerWithTimeInterval:0.01
+                                                target:view_self
+                                              selector:@selector(play_timer)
+                                              userInfo:NULL
+                                               repeats:YES];
+    
 }
 
 -(void) stopSynthAnim {
-  [nsTimer invalidate];
-  nsTimer = nil;
+    [nsTimer invalidate];
+    nsTimer = nil;
 }
 
 +(void)playAnim:(id)param{
-  int f,done;
-   
-  //  if (mode == SYNTH_MODE) { synth_timer(); return; }
-  //  if (mode == PV_MODE) { pv_timer(); return; }
-
-  while (currently_playing) {
-    f = cur_play_frame_num - start_play_frame_num;
-    if (ready_for_play_frame(f)) gui_spect_play_function();   // only 1 iteration per sleep
-    /*    while (ready_for_play_frame(cur_play_frame_num - start_play_frame_num)) 
-	  gui_spect_play_function(); */
-
-
-
-
-    usleep(10000); // .01 secs
-    //    usleep(25000); // .025 secs
-    //        NSLog(@"anim Thread says hello\n");
-
-  }
-  NSLog(@"finished playAnim thread");
+    int f,done;
+    
+    //  if (mode == SYNTH_MODE) { synth_timer(); return; }
+    //  if (mode == PV_MODE) { pv_timer(); return; }
+    
+    while (currently_playing) {
+        f = cur_play_frame_num - start_play_frame_num;
+        if (ready_for_play_frame(f)) gui_spect_play_function();   // only 1 iteration per sleep
+        /*    while (ready_for_play_frame(cur_play_frame_num - start_play_frame_num))
+         gui_spect_play_function(); */
+        
+        
+        
+        
+        usleep(10000); // .01 secs
+        //    usleep(25000); // .025 secs
+        //        NSLog(@"anim Thread says hello\n");
+        
+    }
+    NSLog(@"finished playAnim thread");
 }
 
 +(void)playRead:(id)param{
-  int f,done;
-   
-
-  while (currently_playing) {
+    int f,done;
+    
+    
+    while (currently_playing) {
         fill_read_buffer(&solo_read_buff);
         fill_read_buffer(&orch_read_buff);
-    usleep(100000); // .1 secs
-    //    NSLog(@"read iter");
-  }
-  NSLog(@"finished playRead thread");
+        usleep(100000); // .1 secs
+        //    NSLog(@"read iter");
+    }
+    NSLog(@"finished playRead thread");
 }
 
 -(void) markersChange {
     int f0;
     
-  //  [self show_the_spect];
+    //  [self show_the_spect];
     draw_note_markers(clicks_in);
     f0 = (cur_nt < firstnote) ? 0 : score.solo.note[cur_nt].frames;
     add_line_to_visible(f0,COLOR_GREEN);
@@ -2671,11 +2693,11 @@ PAGE_STAFF top_line,bot_line;  // what is showing on the
     
     r = g = b = 0;
     NSUInteger zColourAry[3] = {r,g,b};
-    for (y = 0; y < SPECT_HT; y++) { 
+    for (y = 0; y < SPECT_HT; y++) {
         for (x = 0; x < spect_wd; x++) {
-            [bitmap setPixel:zColourAry atX:x y:y];      
-        }         
-    } 
+            [bitmap setPixel:zColourAry atX:x y:y];
+        }
+    }
     [view_self setNeedsDisplay:YES];
 }
 
@@ -2703,18 +2725,18 @@ typedef struct {
 #define MAX_PATCH_COLS 21
 
 typedef struct {
-  LOC loc;  // the upper left corner
-  int rows;
-  int cols;
-  unsigned char grey[MAX_PATCH_ROWS][MAX_PATCH_COLS];
+    LOC loc;  // the upper left corner
+    int rows;
+    int cols;
+    unsigned char grey[MAX_PATCH_ROWS][MAX_PATCH_COLS];
 } IMAGE_PATCH;
 
 #define MAX_IMAGE_PATCHES  500 // the max number of noteheads that could be showing at one time
 
 typedef struct {
-  int top;
-  IMAGE_PATCH *ptr[MAX_IMAGE_PATCHES];
-  IMAGE_PATCH el[MAX_IMAGE_PATCHES];
+    int top;
+    IMAGE_PATCH *ptr[MAX_IMAGE_PATCHES];
+    IMAGE_PATCH el[MAX_IMAGE_PATCHES];
 } IMAGE_PATCH_STACK;
 
 
@@ -2722,7 +2744,7 @@ typedef struct {
     char tag[20];
     int staff;
     LOC loc;
-  IMAGE_PATCH patch; // might want to use pointers to these an alloc them wiht a stack to save space ... simpler implementation for now. see IMAGE_PATCH_STACK for later ...
+    IMAGE_PATCH patch; // might want to use pointers to these an alloc them wiht a stack to save space ... simpler implementation for now. see IMAGE_PATCH_STACK for later ...
 } NOTE_HEAD;
 
 
@@ -2752,21 +2774,21 @@ typedef struct {
 
 
 typedef struct {
-  //INT_RANGE src; // will phase out src and dst in favor of fr and to
-  //INT_RANGE dst;
-  RECT fr;
-  RECT to;
-  int page;
-  int staff;
-  int filler;  /* is this just white space filler?  only dst field meaningful if true.  
-                this is also used for an interval that has been chopped in two by writing another interval over it.*/
+    //INT_RANGE src; // will phase out src and dst in favor of fr and to
+    //INT_RANGE dst;
+    RECT fr;
+    RECT to;
+    int page;
+    int staff;
+    int filler;  /* is this just white space filler?  only dst field meaningful if true.
+                  this is also used for an interval that has been chopped in two by writing another interval over it.*/
 } IMAGE_INTERVAL;  // a full width chunk of the notation image
 
 
 #define MAX_IMAGE_INTERVALS 100
 
 typedef struct {
-  float scale;
+    float scale;
     int num;
     IMAGE_INTERVAL list[MAX_IMAGE_INTERVALS];
 } INTERVAL_MAP;
@@ -2801,29 +2823,29 @@ static IMAGE_PATCH_STACK ips;
 
 static void
 myexit2() {
-  exit(0); 
+    exit(0);
 }
 
 
 static void
 init_image_patch_list() {
-  int i;
-
-  for (i=0; i < MAX_IMAGE_PATCHES; i++) ips.ptr[i] = ips.el + i;
-  ips.top = 0;
+    int i;
+    
+    for (i=0; i < MAX_IMAGE_PATCHES; i++) ips.ptr[i] = ips.el + i;
+    ips.top = 0;
 }
 
 
 static IMAGE_PATCH*
 get_image_patch() {
-  if (ips.top == MAX_IMAGE_PATCHES-1) { printf("no more patches available\n"); myexit2(); }
-  return(ips.ptr[ips.top++]);
+    if (ips.top == MAX_IMAGE_PATCHES-1) { printf("no more patches available\n"); myexit2(); }
+    return(ips.ptr[ips.top++]);
 }
 
 static void
 free_image_patch(IMAGE_PATCH *ptr) {
-  if (ips.top <= 0) { printf("something went very very wrong\n"); myexit2(); }
-  ips.ptr[--ips.top] = ptr;
+    if (ips.top <= 0) { printf("something went very very wrong\n"); myexit2(); }
+    ips.ptr[--ips.top] = ptr;
 }
 
 
@@ -2832,11 +2854,11 @@ init_interval_map(INTERVAL_MAP *imap) {
     IMAGE_INTERVAL ii;
     imap->num = 2;
     
-   /* imap->list[0].dst.lo = 0;
-    imap->list[0].dst.hi = SPECT_HT;*/
+    /* imap->list[0].dst.lo = 0;
+     imap->list[0].dst.hi = SPECT_HT;*/
     imap->list[0].filler = 1;
-   
-  //  ii.dst.lo = 0; ii.dst.hi = SPECT_HT;
+    
+    //  ii.dst.lo = 0; ii.dst.hi = SPECT_HT;
     ii.filler = 1;
     ii.fr.loc.i = ii.fr.loc.j = ii.fr.height = ii.fr.width = 0;
     ii.to.loc.i = 0; ii.to.loc.j = 0;
@@ -2844,7 +2866,7 @@ init_interval_map(INTERVAL_MAP *imap) {
     ii.to.width = spect_wd;
     imap->list[0] = ii;
     ii.to.loc.i = NOTATION_BUFFER_SIZE/2;
-     imap->list[1] = ii;
+    imap->list[1] = ii;
     
     
     
@@ -2863,10 +2885,10 @@ split_image_interval(IMAGE_INTERVAL *ival, int split,  IMAGE_INTERVAL *new_ival 
     int old_height;
     
     *new_ival = *ival;
-  /*  ival->src.hi =  ival->src.lo + (ival->src.hi - ival->src.lo) * (split - ival->dst.lo)/ (ival->dst.hi - ival->dst.lo);
-    ival->dst.hi = new_ival->dst.lo = split;
-    
-    new_ival->src.lo = ival->src.hi;*/
+    /*  ival->src.hi =  ival->src.lo + (ival->src.hi - ival->src.lo) * (split - ival->dst.lo)/ (ival->dst.hi - ival->dst.lo);
+     ival->dst.hi = new_ival->dst.lo = split;
+     
+     new_ival->src.lo = ival->src.hi;*/
     
     old_height = ival->to.height;
     ival->to.height = mod_out(split - ival->to.loc.i);
@@ -2875,20 +2897,20 @@ split_image_interval(IMAGE_INTERVAL *ival, int split,  IMAGE_INTERVAL *new_ival 
     new_ival->to.height -= ival->to.height;
     new_ival->fr.height -= ival->fr.height;
     new_ival->filler = ival->filler = 1;  // not a full interval anymore so really is trash
- 
+    
     //printf("new_ival->src.lo = %d ival->src.hi = %d\n",new_ival->src.lo,ival->src.hi);
 }
 
 
 /*static int
-consistency(IMAGE_INTERVAL ival) {
-  if (ival.dst.lo != ival.to.loc.i) return(0);
-  if (ival.dst.hi != (ival.to.loc.i + ival.to.height)) return(0);
-  if (ival.filler) return(1);
-  if (ival.src.lo != ival.fr.loc.i) return(0);
-  if (ival.src.hi != (ival.fr.loc.i + ival.fr.height)) return(0);
-  return(1);
-}*/
+ consistency(IMAGE_INTERVAL ival) {
+ if (ival.dst.lo != ival.to.loc.i) return(0);
+ if (ival.dst.hi != (ival.to.loc.i + ival.to.height)) return(0);
+ if (ival.filler) return(1);
+ if (ival.src.lo != ival.fr.loc.i) return(0);
+ if (ival.src.hi != (ival.fr.loc.i + ival.fr.height)) return(0);
+ return(1);
+ }*/
 
 
 
@@ -2906,7 +2928,7 @@ crosses_boundary(int a, int b, int bound) {
 static int
 in_order(int a, int b, int c) { // is b encountered before c beginning at a and increasing modulo NOTATION_BUFFER_SIZe
     
- // return(crosses_boundary(b,c,a) == 0);
+    // return(crosses_boundary(b,c,a) == 0);
     
     if (a == b && b == c) return(1);
     if (a == c) return(0);
@@ -2935,8 +2957,8 @@ split_interval_map_on_point(int split, INTERVAL_MAP *imap) {
         ival = imap->list+k;
         lo = imap->list[k].to.loc.i;
         hi = mod_out(lo + imap->list[k].to.height);
-      //  if (split > imap->list[k].dst.lo && split < imap->list[k].dst.hi) {
-       // if (split > lo && split < hi) {
+        //  if (split > imap->list[k].dst.lo && split < imap->list[k].dst.hi) {
+        // if (split > lo && split < hi) {
         if (split != lo && split != hi && in_order(lo,split,hi)) {
             split_image_interval(imap->list + k,split,&new_ival);
             for (kk=imap->num; kk > k+1; kk--) imap->list[kk] = imap->list[kk-1];
@@ -2972,9 +2994,9 @@ src_loc2dst_loc(LOC src, IMAGE_INTERVAL ival) {
     
     
     dst.i = mod_out(ival.to.loc.i + (src.i-ival.fr.loc.i)*ival.to.height/ival.fr.height);
-  //  if (dst.i >= NOTATION_BUFFER_SIZE) dst.i -= NOTATION_BUFFER_SIZE;
+    //  if (dst.i >= NOTATION_BUFFER_SIZE) dst.i -= NOTATION_BUFFER_SIZE;
     dst.j = (src.j*ival.to.width)/ival.fr.width;
-    /* in theory shoudld get same answer if we use the ratio of heights rather than widthds, but this is better 
+    /* in theory shoudld get same answer if we use the ratio of heights rather than widthds, but this is better
      numerically speaking */
     return(dst);
 }
@@ -2986,8 +3008,8 @@ dst_loc2src_loc(LOC dst, IMAGE_INTERVAL ival) {
     
     d = mod_out(dst.i - ival.to.loc.i);
     src.i = ival.fr.loc.i + ival.fr.height*d / ival.to.height;
-   //  src.i = ival.fr.loc.i + ival.fr.height*(dst.i - ival.to.loc.i) / ival.to.height;
-   // src.j = dst.j * ival.fr.height/ival.to.height;
+    //  src.i = ival.fr.loc.i + ival.fr.height*(dst.i - ival.to.loc.i) / ival.to.height;
+    // src.j = dst.j * ival.fr.height/ival.to.height;
     src.j = dst.j * ival.fr.width/ival.to.width;
     return(src);
 }
@@ -3001,8 +3023,8 @@ src_rct2dst_rct(RECT src, IMAGE_INTERVAL ival) {
     RECT dst;
     
     //    scale = (ival.dst.hi-ival.dst.lo)/(float)(ival.src.hi-ival.src.lo);
-   /* dst.loc.i = ival.dst.lo + (src.loc.i-ival.src.lo)*ival.to.height/ival.fr.height;
-    dst.loc.j = src.loc.j*ival.to.width/ival.fr.width;*/
+    /* dst.loc.i = ival.dst.lo + (src.loc.i-ival.src.lo)*ival.to.height/ival.fr.height;
+     dst.loc.j = src.loc.j*ival.to.width/ival.fr.width;*/
     
     dst.loc = src_loc2dst_loc(src.loc,ival);
     dst.height = (src.height*ival.to.height)/ival.fr.height;
@@ -3011,7 +3033,7 @@ src_rct2dst_rct(RECT src, IMAGE_INTERVAL ival) {
 }
 
 static int
-range_overlap(INT_RANGE i1, INT_RANGE i2) {  
+range_overlap(INT_RANGE i1, INT_RANGE i2) {
     int hi,lo,d;
     
     hi = (i1.hi < i2.hi) ? i1.hi : i2.hi;
@@ -3025,14 +3047,14 @@ static int
 max_overlap_line_index(IMAGE_INTERVAL ival,int p) {
     int k,maxk,max_overlap=0,d;
     INT_RANGE ir1,ir2;
-   
+    
     for (k=0; k < notation.page[p].map.n; k++) {
         ir1 = notation.page[p].map.range[k];
         ir2.lo = ival.fr.loc.i;
         ir2.hi = ir2.lo + ival.fr.height;
         d = range_overlap(ir1,ir2);
         if (d > max_overlap) { max_overlap = d; maxk = k; }
-       
+        
     }
     if (max_overlap == 0) { printf("couldn't find any overlap\n"); myexit2(); }
     return(maxk);
@@ -3046,47 +3068,47 @@ max_overlap_line_index(IMAGE_INTERVAL ival,int p) {
 
 static void
 identify_note_head_screen_positions(IMAGE_INTERVAL ival) {
-  int k,p,j,i,h,bpr,kk ;
-  INT_RANGE ir;
-  LOC src,dst;
-  STAFF_HEAD_STRUCT *shs;
-  IMAGE_PATCH *patch;
-  unsigned char *ptr,*row;
-  STAFF_HEAD_LIST *shl;
-  RECT src_rect,dst_rect;
-  ptr = [bitmap bitmapData];
-  bpr = [bitmap bytesPerRow];
-  p = ival.page;
+    int k,p,j,i,h,bpr,kk ;
+    INT_RANGE ir;
+    LOC src,dst;
+    STAFF_HEAD_STRUCT *shs;
+    IMAGE_PATCH *patch;
+    unsigned char *ptr,*row;
+    STAFF_HEAD_LIST *shl;
+    RECT src_rect,dst_rect;
+    ptr = [bitmap bitmapData];
+    bpr = [bitmap bytesPerRow];
+    p = ival.page;
     
-   // k = max_overlap_line_index(ival,p); // index of relevant line  (rather than recomputing this, shouldn't it be passed or just part of the ival structure? )
+    // k = max_overlap_line_index(ival,p); // index of relevant line  (rather than recomputing this, shouldn't it be passed or just part of the ival structure? )
     k = ival.staff;
     shs = &notation.page[p].staffdex;
     shl = shs->staff + k;
     for (h=0; h < shl->num; h++) {
-      src = shs->staff[k].head[h].loc;
-      src_rect =   center_box(src, /*HEAD_BOX_HALF_HT*/10, /*HEAD_BOX_HALF_WD*/ 13);
+        src = shs->staff[k].head[h].loc;
+        src_rect =   center_box(src, /*HEAD_BOX_HALF_HT*/10, /*HEAD_BOX_HALF_WD*/ 13);
         
-      dst  =  src_loc2dst_loc(src, ival);
-
-      patch = &(shs->staff[k].head[h].patch);
-      dst_rect = src_rct2dst_rct(src_rect,ival);
-      patch->loc.i = dst_rect.loc.i;
-      patch->loc.j = dst_rect.loc.j;
-      patch->rows = dst_rect.height;
-      patch->cols = dst_rect.width;
-      if (patch->rows > MAX_PATCH_ROWS || patch->cols > MAX_PATCH_COLS)
-          printf("adfadsf\n");
-      
-      
-      for (i=0; i < patch->rows; i++) {
-        row = ptr + mod_out(i+patch->loc.i)*bpr;
-    	for (j=0; j < patch->cols; j++) {
-	  
-          patch->grey[i][j] = row[3*(j+patch->loc.j)];
-
-    	}
+        dst  =  src_loc2dst_loc(src, ival);
         
-      }
+        patch = &(shs->staff[k].head[h].patch);
+        dst_rect = src_rct2dst_rct(src_rect,ival);
+        patch->loc.i = dst_rect.loc.i;
+        patch->loc.j = dst_rect.loc.j;
+        patch->rows = dst_rect.height;
+        patch->cols = dst_rect.width;
+        if (patch->rows > MAX_PATCH_ROWS || patch->cols > MAX_PATCH_COLS)
+            printf("adfadsf\n");
+        
+        
+        for (i=0; i < patch->rows; i++) {
+            row = ptr + mod_out(i+patch->loc.i)*bpr;
+            for (j=0; j < patch->cols; j++) {
+                
+                patch->grey[i][j] = row[3*(j+patch->loc.j)];
+                
+            }
+            
+        }
     }
 }
 
@@ -3155,7 +3177,7 @@ height_contained_circ(RECT r1, RECT r2) {  // vertical range of r1 contained in 
     tot += mod_out(hi1 - lo1);
     tot += mod_out(hi2 - hi1);
     tot += mod_out(lo2 - hi2);
-    return(tot == NOTATION_BUFFER_SIZE);  // in other words the sequence wraps around exactly once.  
+    return(tot == NOTATION_BUFFER_SIZE);  // in other words the sequence wraps around exactly once.
 }
 
 static int
@@ -3193,28 +3215,28 @@ add_image_interval(IMAGE_INTERVAL ival, INTERVAL_MAP *imap) {
     int k,kk,m,lo,hi,b1,b2,a,b,c,d;
     IMAGE_INTERVAL ii;
     
-   
+    
     if (imap->num == 0) init_interval_map(imap);
     lo = ival.to.loc.i;
     hi = mod_out(lo+ival.to.height);
     split_interval_map_on_range(lo,hi,/*ival.dst,*/imap);
-  //  for (k=0; k < imap->num; k++) if (ival.dst.lo == imap->list[k].dst.lo) break;
+    //  for (k=0; k < imap->num; k++) if (ival.dst.lo == imap->list[k].dst.lo) break;
     for (k= imap->num-1; k >= 0; k--) if (height_contained_circ(imap->list[k].to, ival.to))  imap->list[k] = imap->list[--imap->num];
-  /*  for (k= imap->num-1; k >= 0; k--)
-        if (circ_rects_intersect(imap->list[k].to, ival.to))
-            imap->list[k] = imap->list[--imap->num];*/
+    /*  for (k= imap->num-1; k >= 0; k--)
+     if (circ_rects_intersect(imap->list[k].to, ival.to))
+     imap->list[k] = imap->list[--imap->num];*/
     imap->list[imap->num++] = ival;
     return;
-					
-				    
-
     
-
+    
+    
+    
+    
     for (k=0; k < imap->num; k++) if (ival.to.loc.i == imap->list[k].to.loc.i) break;
     if (k == imap->num) { printf("shouldn't be no no\n"); myexit2(); }
     imap->list[k] = ival;
     for (kk = k+1; kk < imap->num; kk++) {
-       if (height_contained_circ(imap->list[kk].to, ival.to)) {
+        if (height_contained_circ(imap->list[kk].to, ival.to)) {
             for (m=kk; m < imap->num; m++) imap->list[m] = imap->list[m+1];
             imap->num--;
         }
@@ -3230,14 +3252,14 @@ print_imap(INTERVAL_MAP *imap) {
     NSLog(@"printing interval map:\n");
     for (k=0; k < imap->num; k++) {
         NSLog(@"interval = %d\n",k);
-      //  NSLog(@"dst = (%d %d)\n",imap->list[k].dst.lo,imap->list[k].dst.hi);
-    //    NSLog(@"src = (%d %d)\n",imap->list[k].src.lo,imap->list[k].src.hi);
+        //  NSLog(@"dst = (%d %d)\n",imap->list[k].dst.lo,imap->list[k].dst.hi);
+        //    NSLog(@"src = (%d %d)\n",imap->list[k].src.lo,imap->list[k].src.hi);
         NSLog(@"src = (%d %d)" , imap->list[k].fr.loc.i, mod_out(imap->list[k].fr.loc.i+imap->list[k].fr.height));
         NSLog(@"to = (%d %d)" , imap->list[k].to.loc.i, mod_out(imap->list[k].to.loc.i+imap->list[k].to.height));
         NSLog(@"page = %d line = %d\n",imap->list[k].page,imap->list[k].staff);
         NSLog(@"filler = %d\n",imap->list[k].filler);
-	NSLog(@" ");
-	
+        NSLog(@" ");
+        
     }
     
 }
@@ -3246,14 +3268,14 @@ static void
 fill_image_wide_rect(RECT dst, int val) {
     int i,j,k,bpr;
     Byte *ptr,*row;
-     IMAGE_INTERVAL ival;
-   
+    IMAGE_INTERVAL ival;
+    
     /*ival.dst.lo = dst.loc.i; ival.dst.hi = dst.loc.i+dst.height;
-    ival.src.lo = ival.src.hi = 0;*/
+     ival.src.lo = ival.src.hi = 0;*/
     ival.filler = 1; ival.page = 0;
     ival.fr.loc.i = ival.fr.loc.j = ival.fr.height = ival.fr.width = ival.to.loc.j = 0; // these don't matter
     ival.to =dst;
-
+    
     ptr = [bitmap bitmapData];
     bpr = [bitmap bytesPerRow];
     for (i=0; i < dst.height; i++) {
@@ -3267,11 +3289,11 @@ fill_image_wide_rect(RECT dst, int val) {
 
 static void
 copy_image_box_rescale(NSBitmapImageRep *image, RECT src, RECT dst) {
-  unsigned char *ptr1,*row1,*ptr2,*row2;
-  int i,j,ii,q,jj,k,bpr1,bpr2;
-  short int count[MAX_DST_HT][MAX_DST_WD];  // lots of stack space claimed here ... be careful
-      int result[MAX_DST_HT][MAX_DST_WD];
-
+    unsigned char *ptr1,*row1,*ptr2,*row2;
+    int i,j,ii,q,jj,k,bpr1,bpr2;
+    short int count[MAX_DST_HT][MAX_DST_WD];  // lots of stack space claimed here ... be careful
+    int result[MAX_DST_HT][MAX_DST_WD];
+    
     if (dst.width > MAX_DST_WD || dst.height > MAX_DST_HT) {
         NSLog(@"bad height or with in copyBitmap ht = %d wd = %d",dst.height,dst.width);
         myexit2();
@@ -3290,7 +3312,7 @@ copy_image_box_rescale(NSBitmapImageRep *image, RECT src, RECT dst) {
         row1 = ptr1 + (i+src.loc.i)*bpr1;
         ii = i*dst.height/src.height;
         for (j=0; j < src.width; j++) {
-	  jj = j*dst.width/src.width;
+            jj = j*dst.width/src.width;
             result[ii][jj] += row1[3*(src.loc.j+j)];
             count[ii][jj]++;
         }
@@ -3298,18 +3320,18 @@ copy_image_box_rescale(NSBitmapImageRep *image, RECT src, RECT dst) {
     for (i=0; i < dst.height; i++) {
         ii = dst.loc.i+i;
         if (ii >= NOTATION_BUFFER_SIZE) ii -= NOTATION_BUFFER_SIZE;
-       // row2 = ptr2 + (dst.loc.i+i)*bpr2;
+        // row2 = ptr2 + (dst.loc.i+i)*bpr2;
         row2 = ptr2 + ii*bpr2;
-
+        
         for (j=0; j < dst.width; j++) {
             q = result[i][j] / count[i][j];
             for (k=0; k < 3; k++) row2[3*(dst.loc.j+j) + k] = q;
-              //  result[i][jj] / count[i][jj];
+            //  result[i][jj] / count[i][jj];
         }
     }
-
- 
-} 
+    
+    
+}
 
 
 void add_notation_rect(/*NSBitmapImageRep *target,*/ int page_num, int staff, RECT src, RECT dst) {
@@ -3321,14 +3343,14 @@ void add_notation_rect(/*NSBitmapImageRep *target,*/ int page_num, int staff, RE
     
     image = notation.page[page_num].bitmap;
     /*ival.dst.lo = dst.loc.i; ival.dst.hi = dst.loc.i+dst.height;
-    ival.src.lo = src.loc.i; ival.src.hi = src.loc.i+src.height;*/
+     ival.src.lo = src.loc.i; ival.src.hi = src.loc.i+src.height;*/
     ival.filler = 0; ival.page = page_num; ival.staff = staff;
     ival.fr = src; ival.to = dst;
     
     add_image_interval(ival,&page_status.imap);
     copy_image_box_rescale(image, src, dst);
     identify_note_head_screen_positions(ival);
-
+    
 }
 
 
@@ -3356,27 +3378,27 @@ pos_on_note(LOC dst_loc, NOTATION_SCROLL_POS  *nsp, LOC *head_loc) {  // this is
     
     for (k=0; k < page_status.imap.num; k++) {
         ival = page_status.imap.list[k];
-       // if (!(dst_loc.i >= ival.dst.lo && dst_loc.i < ival.dst.hi)) continue;
+        // if (!(dst_loc.i >= ival.dst.lo && dst_loc.i < ival.dst.hi)) continue;
         top = mod_out(ival.to.loc.i+ival.to.height);
         if (!in_order(ival.to.loc.i, dst_loc.i, top)) continue;
-  //      if (!(dst_loc.i >= ival.to.loc.i && dst_loc.i < (ival.to.loc.i+ival.to.height))) continue;
+        //      if (!(dst_loc.i >= ival.to.loc.i && dst_loc.i < (ival.to.loc.i+ival.to.height))) continue;
         if (ival.filler) return(0);
         s = ival.staff;
         page = notation.page[ival.page];
-      /*  src_loc.i = ival.src.lo +
-            (ival.src.hi-ival.src.lo)*(dst_loc.i-ival.dst.lo)/(ival.dst.hi-ival.dst.lo);
-       
-        src_loc.j = dst_loc.j *(ival.src.hi-ival.src.lo) /(ival.dst.hi-ival.dst.lo);*/
+        /*  src_loc.i = ival.src.lo +
+         (ival.src.hi-ival.src.lo)*(dst_loc.i-ival.dst.lo)/(ival.dst.hi-ival.dst.lo);
+         
+         src_loc.j = dst_loc.j *(ival.src.hi-ival.src.lo) /(ival.dst.hi-ival.dst.lo);*/
         
-       /* src_loc.i = ival.fr.loc.i + ival.fr.height*(dst_loc.i - ival.to.loc.i) / ival.to.height;
-        src_loc.j = dst_loc.j * ival.fr.height/ival.to.height;*/
+        /* src_loc.i = ival.fr.loc.i + ival.fr.height*(dst_loc.i - ival.to.loc.i) / ival.to.height;
+         src_loc.j = dst_loc.j * ival.fr.height/ival.to.height;*/
         
         src_loc = dst_loc2src_loc(dst_loc,ival);
         
-    /*    for (s=0; s < page.map.n; s++) {
-            if (src_loc.i > page.map.range[s].lo && src_loc.i < page.map.range[s].hi) break;
-        }
-        if (s == page.map.n) return(0); */
+        /*    for (s=0; s < page.map.n; s++) {
+         if (src_loc.i > page.map.range[s].lo && src_loc.i < page.map.range[s].hi) break;
+         }
+         if (s == page.map.n) return(0); */
         for (m=0; m < page.staffdex.staff[s].num; m++) {
             cand = page.staffdex.staff[s].head[m].loc;
             if (locs_close(cand,src_loc) == 0) continue;
@@ -3386,8 +3408,8 @@ pos_on_note(LOC dst_loc, NOTATION_SCROLL_POS  *nsp, LOC *head_loc) {  // this is
         }
         return(0);
         
-    
-     
+        
+        
         
         
         /* horizontal and vertical scaling must be identical to prevent image warping */
@@ -3399,15 +3421,15 @@ pos_on_note(LOC dst_loc, NOTATION_SCROLL_POS  *nsp, LOC *head_loc) {  // this is
             if (d < 0) d = -d;
             if (d > 15) continue;
             src_loc = page.dex.head[m].loc;
-       
-
-            
-          /*  head_loc->i = ival.dst.lo + (src_loc.i-ival.src.lo)*(ival.dst.hi-ival.dst.lo)/(ival.src.hi-ival.src.lo);
-            head_loc->j = (src_loc.j*(ival.dst.hi-ival.dst.lo))/(ival.src.hi-ival.src.lo);*/
             
             
-           /* head_loc->i = ival.to.loc.i + (src_loc.i-ival.fr.loc.i)*ival.to.height/ival.fr.height;
-            head_loc->j = src_loc.j*ival.to.height/ival.fr.height;*/
+            
+            /*  head_loc->i = ival.dst.lo + (src_loc.i-ival.src.lo)*(ival.dst.hi-ival.dst.lo)/(ival.src.hi-ival.src.lo);
+             head_loc->j = (src_loc.j*(ival.dst.hi-ival.dst.lo))/(ival.src.hi-ival.src.lo);*/
+            
+            
+            /* head_loc->i = ival.to.loc.i + (src_loc.i-ival.fr.loc.i)*ival.to.height/ival.fr.height;
+             head_loc->j = src_loc.j*ival.to.height/ival.fr.height;*/
             
             *head_loc = src_loc2dst_loc(src_loc,ival);
             return(1);
@@ -3426,7 +3448,7 @@ pos_on_note(LOC dst_loc, NOTATION_SCROLL_POS  *nsp, LOC *head_loc) {  // this is
 
 static NOTATION_SCROLL_POS
 pos2nsp(LOC dst_loc) {  // this is loc in the the big bitmap in [0 ... n-1 ]
-  int k,m,d,s,h,kk,bestk,i,besti;
+    int k,m,d,s,h,kk,bestk,i,besti;
     IMAGE_INTERVAL ival;
     PAGE page;
     LOC src_loc;
@@ -3436,33 +3458,33 @@ pos2nsp(LOC dst_loc) {  // this is loc in the the big bitmap in [0 ... n-1 ]
     if (dst_loc.i > 1500)
         NSLog(@"I don't think so");
     
-   // besti = notation_scroll; // this will always be beaten
-     besti = scan_top; // this will always be beaten
+    // besti = notation_scroll; // this will always be beaten
+    besti = scan_top; // this will always be beaten
     bestk = -1;
     for (k=0; k < page_status.imap.num; k++) {
         ival = page_status.imap.list[k]; // just for debugging
-      if (page_status.imap.list[k].filler) continue;
-      i = page_status.imap.list[k].to.loc.i;
-     // if (is_showing(i) == 0) continue;
-     /* if (in_order(notation_scroll,i,dst_loc.i) == 0) continue;  // only want staff lines that are before the mouse
-      if (in_order(notation_scroll,besti,i)) { besti = i; bestk = k; }*/
-    if (in_order(scan_top,i,dst_loc.i) == 0) continue;  // only want staff lines that are before the mouse
+        if (page_status.imap.list[k].filler) continue;
+        i = page_status.imap.list[k].to.loc.i;
+        // if (is_showing(i) == 0) continue;
+        /* if (in_order(notation_scroll,i,dst_loc.i) == 0) continue;  // only want staff lines that are before the mouse
+         if (in_order(notation_scroll,besti,i)) { besti = i; bestk = k; }*/
+        if (in_order(scan_top,i,dst_loc.i) == 0) continue;  // only want staff lines that are before the mouse
         if (in_order(scan_top,besti,i)) { besti = i; bestk = k; }
     }
     if ( bestk == -1) {
         
         
-     //   besti = notation_scroll; // this will always be beaten
+        //   besti = notation_scroll; // this will always be beaten
         besti = scan_top; // this will always be beaten
-
+        
         bestk = -1;
         for (k=0; k < page_status.imap.num; k++) {
             ival = page_status.imap.list[k]; // just for debugging
             if (page_status.imap.list[k].filler) continue;
             i = page_status.imap.list[k].to.loc.i;
-       //     if (is_showing(i) == 0) continue;
-           /* if (in_order(notation_scroll,i,dst_loc.i) == 0) continue;  // only want staff lines that are before the mouse
-            if (in_order(notation_scroll,besti,i)) { besti = i; bestk = k; } */
+            //     if (is_showing(i) == 0) continue;
+            /* if (in_order(notation_scroll,i,dst_loc.i) == 0) continue;  // only want staff lines that are before the mouse
+             if (in_order(notation_scroll,besti,i)) { besti = i; bestk = k; } */
             if (in_order(scan_top,i,dst_loc.i) == 0) continue;  // only want staff lines that are before the mouse
             if (in_order(scan_top,besti,i)) { besti = i; bestk = k; }
         }
@@ -3479,41 +3501,41 @@ pos2nsp(LOC dst_loc) {  // this is loc in the the big bitmap in [0 ... n-1 ]
     src_loc = dst_loc2src_loc(dst_loc,ival);
     shl = page.staffdex.staff + nsp.staff;
     for (h= shl->num-1; h >= 0; h--)
-      if (src_loc.j > shl->head[h].loc.j) break;
+        if (src_loc.j > shl->head[h].loc.j) break;
     nsp.index = h+1;
     return(nsp);
-
-
+    
+    
     // ------------------------------- the old way ----------------------
     
-        for (k=page_status.imap.num-1; k >= 0; k--) {
+    for (k=page_status.imap.num-1; k >= 0; k--) {
         if (page_status.imap.list[k].filler) continue;
         kk = k;
-      //  if (dst_loc.i > page_status.imap.list[k].dst.lo) break;
+        //  if (dst_loc.i > page_status.imap.list[k].dst.lo) break;
         if (dst_loc.i > page_status.imap.list[k].to.loc.i) break;
     }
     if (k < 0) k = kk;
-        ival = page_status.imap.list[k];
+    ival = page_status.imap.list[k];
     
-        nps.page = ival.page;
-   
-        
+    nps.page = ival.page;
+    
+    
     page = notation.page[ival.page];
     
     src_loc = dst_loc2src_loc(dst_loc,ival);
-   
+    
     for (s=page.map.n-1; s >= 0; s--) {
         INT_RANGE ir  = page.map.range[s];
-	if (src_loc.i > page.map.range[s].lo) break;  
+        if (src_loc.i > page.map.range[s].lo) break;
     }
     if (s < 0) /*s++;*/ { nps.staff = nps.index = 0; return(nps); }
-        nps.staff = s;
-        
-        for (h= page.staffdex.staff[s].num-1; h >= 0; h--)
-            if (src_loc.j > page.staffdex.staff[s].head[h].loc.j) break;
-      //  if (h < 0) h = 0;
-        nps.index = h+1;
-        return(nps);
+    nps.staff = s;
+    
+    for (h= page.staffdex.staff[s].num-1; h >= 0; h--)
+        if (src_loc.j > page.staffdex.staff[s].head[h].loc.j) break;
+    //  if (h < 0) h = 0;
+    nps.index = h+1;
+    return(nps);
 }
 
 
@@ -3562,7 +3584,7 @@ split_line(int *rp, int *rl) {
         count++;
         inc_pl(rp,rl);
     }
-        
+    
 }
 
 static int  // what is the vertical point we will split the display on for page turning
@@ -3577,17 +3599,17 @@ split_point() {
     page = notation.page + p;
     while (1) {
         count++;
-         if (++l == page->map.n) {l = 0; p++; }
+        if (++l == page->map.n) {l = 0; p++; }
         if (count == last) break;
-       
+        
     }
     return(page->map.showing[l].lo);
 }
 
 /*typedef struct {
-    int n;
-    char *name[MAX_PAGES];
-} PAGE_NAMES;*/
+ int n;
+ char *name[MAX_PAGES];
+ } PAGE_NAMES;*/
 
 //static PAGE_NAMES page;
 
@@ -3650,7 +3672,7 @@ read_note_heads(char *name, NOTE_HEAD_LIST *nhl, STAFF_HEAD_STRUCT *shs) {
         for (j=0; j < count[i]; j++) {
             if (head[k].staff != i) { printf("bad news in reading lines\n"); return(0); }
             shs->staff[i].head[j] = head[k++];
-                
+            
         }
     }
     return(1);
@@ -3677,7 +3699,7 @@ get_page_names() {
         name[strlen(name)-4] = 0;
         page->name = (char *) malloc(strlen(name)+1);
         strcpy(page->name,name);
-       
+        
         strcpy(bitmap,path);
         strcat(bitmap,"/");
         strcat(bitmap,name);
@@ -3685,7 +3707,7 @@ get_page_names() {
         NSString *s = [[NSString alloc] initWithCString: bitmap];
         NSImage *image = [[NSImage alloc] initWithContentsOfFile:s];
         page->bitmap =[[NSBitmapImageRep alloc] initWithCGImage:[image CGImageForProposedRect:NULL context:NULL hints:NULL]];
-
+        
         strcpy(range,path);
         strcat(range,"/");
         strcat(range,name);
@@ -3734,9 +3756,9 @@ dst2src(int h) {
 
 static int
 src2dst2(int h, int p, int l) {
-  /*  float t;
-    t = h*spect_wd/(float)notation.page[p].bitmap.pixelsWide;
-    return( (int) (t + .5));*/
+    /*  float t;
+     t = h*spect_wd/(float)notation.page[p].bitmap.pixelsWide;
+     return( (int) (t + .5));*/
     return(h*spect_wd/notation.page[p].bitmap.pixelsWide);
 }
 
@@ -3751,9 +3773,9 @@ static int
 staves_on_page() {
     int k;
     
-    for (k=0; k < staff_range.n; k++) 
+    for (k=0; k < staff_range.n; k++)
         if (src2dst(staff_range.range[k].hi) > SPECT_HT) return(k);
-  //  if (staff_range.range[k].hi*spect_wd/pageBitmap.pixelsWide > SPECT_HT) return(k);
+    //  if (staff_range.range[k].hi*spect_wd/pageBitmap.pixelsWide > SPECT_HT) return(k);
     return(k);
 }
 
@@ -3803,7 +3825,7 @@ old_display_first_page() {
         dst.loc.i = dsth;
         dst.height = src2dst2(src.height,p,l);
         if (dst.loc.i + dst.height >= SPECT_HT) break;
-       // [view_self copyBitmap: page->bitmap source:src dest:dst];
+        // [view_self copyBitmap: page->bitmap source:src dest:dst];
         add_notation_rect(/*bitmap,*/p,l,src,dst);
         dsth += dst.height;
         if (++l == page->map.n) { l = 0; p++; }
@@ -3812,7 +3834,7 @@ old_display_first_page() {
     }
     dst.loc.i = dsth;
     dst.height = SPECT_HT-dst.loc.i;
-   // [view_self fillImageRect: dst val:255];
+    // [view_self fillImageRect: dst val:255];
     fill_image_wide_rect(dst,255);
 }
 
@@ -3905,28 +3927,28 @@ highlight_note_head(NOTATION_SCROLL_POS nsp) {
 }
 
 /*static void
-highlight_note_head(NOTATION_SCROLL_POS nsp) {
-    LOC src_loc,dst_loc;
-    int k;
-    INT_RANGE ir;
-    RECT q;
-    IMAGE_INTERVAL ival;
-    
-    src_loc = notation.page[nsp.page].staffdex.staff[nsp.staff].head[nsp.index].loc;
+ highlight_note_head(NOTATION_SCROLL_POS nsp) {
+ LOC src_loc,dst_loc;
+ int k;
+ INT_RANGE ir;
+ RECT q;
+ IMAGE_INTERVAL ival;
+ 
+ src_loc = notation.page[nsp.page].staffdex.staff[nsp.staff].head[nsp.index].loc;
  //   src_loc.i *= 2; src_loc.j *= 2; // MORE AWFUL KLUDGE
-    for (k=0; k < page_status.imap.num; k++) {
-        if (page_status.imap.list[k].filler) continue;
-        ir = page_status.imap.list[k].src;
-        if (src_loc.i >= ir.lo && src_loc.i < ir.hi) break;
-    }
-    if (k == page_status.imap.num) return; // didn't find it
-    ival = page_status.imap.list[k];
-    
-    dst_loc.i = ival.dst.lo + (src_loc.i-ival.src.lo)*(ival.dst.hi-ival.dst.lo)/(ival.src.hi-ival.src.lo);
-    dst_loc.j = (src_loc.j*(ival.dst.hi-ival.dst.lo))/(ival.src.hi-ival.src.lo);
-    q = center_rect(dst_loc,20,30);
-    highlight_image_rect(q);
-} */
+ for (k=0; k < page_status.imap.num; k++) {
+ if (page_status.imap.list[k].filler) continue;
+ ir = page_status.imap.list[k].src;
+ if (src_loc.i >= ir.lo && src_loc.i < ir.hi) break;
+ }
+ if (k == page_status.imap.num) return; // didn't find it
+ ival = page_status.imap.list[k];
+ 
+ dst_loc.i = ival.dst.lo + (src_loc.i-ival.src.lo)*(ival.dst.hi-ival.dst.lo)/(ival.src.hi-ival.src.lo);
+ dst_loc.j = (src_loc.j*(ival.dst.hi-ival.dst.lo))/(ival.src.hi-ival.src.lo);
+ q = center_rect(dst_loc,20,30);
+ highlight_image_rect(q);
+ } */
 
 static void
 init_notation() {
@@ -3934,7 +3956,7 @@ init_notation() {
     init_image_patch_list();
 }
 
-static int 
+static int
 inc_page_line(int *p, int *l) { // return value is boolean for if the page has changed
     (*l)++;
     if (*l == notation.page[*p].staffdex.num) { *l = 0; (*p)++; return(1); }
@@ -3965,17 +3987,17 @@ first_showing_line() {
     IMAGE_INTERVAL ival;
     
     //is_showing(int i) {
-   /* top.page = page_status.imap.list[0].page;
-    top.staff = page_status.imap.list[0].staff;
-    bot = top;*/
-    top.page = 1000;  
+    /* top.page = page_status.imap.list[0].page;
+     top.staff = page_status.imap.list[0].staff;
+     bot = top;*/
+    top.page = 1000;
     for (i=0; i < page_status.imap.num; i++) {
         ival = page_status.imap.list[i];
         if (ival.filler) continue;
         cur.page = ival.page;
         cur.staff = ival.staff;
         if (is_showing(ival.to.loc.i) == 0) continue;
-
+        
         if (compare_page_staff(cur,top) < 0) top = cur;
     }
     return(top);
@@ -4008,14 +4030,14 @@ find_line_range(PAGE_STAFF *first, PAGE_STAFF *last) {
     PAGE_STAFF top,bot,cur;
     IMAGE_INTERVAL ival;
     
-   /* top.page = page_status.imap.list[0].page;
-    top.staff = page_status.imap.list[0].staff;
-    bot = top;*/
+    /* top.page = page_status.imap.list[0].page;
+     top.staff = page_status.imap.list[0].staff;
+     bot = top;*/
     top.page = 1000;  bot.page = -1;
     for (i=0; i < page_status.imap.num; i++) {
         ival = page_status.imap.list[i];
         if (ival.filler) continue;
-     //   if (ival.)
+        //   if (ival.)
         cur.page = ival.page;
         cur.staff = ival.staff;
         if (compare_page_staff(cur,top) < 0) top = cur;
@@ -4036,7 +4058,7 @@ get_ival_ptr(PAGE_STAFF ps) {
         if (ival->page == ps.page && ival->staff == ps.staff) return(ival);
     }
     return(NULL);
-
+    
 }
 
 
@@ -4046,7 +4068,7 @@ fill_notation_scroll_buffer(int p, int l) {
     RECT src,dst;
     PAGE *page;
     
-
+    
     page_status.lines_showing.lo = l;
     page_status.pages_showing.lo = p;
     dst.width = spect_wd;
@@ -4081,12 +4103,12 @@ fill_notation_scroll_buffer(int p, int l) {
     }
     
     bot_line.page = p; bot_line.staff = l;
-   /* dst.loc.i = dsth;
-    dst.height = SPECT_HT-dst.loc.i;
-    fill_image_wide_rect(dst,255);  */
+    /* dst.loc.i = dsth;
+     dst.height = SPECT_HT-dst.loc.i;
+     fill_image_wide_rect(dst,255);  */
     dst.loc.i=0; dst.loc.j = spect_wd; dst.height = NOTATION_BUFFER_SIZE; dst.width = MAX_SPECT_WIDTH-spect_wd;
     [view_self fillImageRect: dst val:255];  // if page expanded want to see white space at right edge
-   // NSLog(@"split point = %d",split_point());  // split_point() hangs.  don't know what it is for
+    // NSLog(@"split point = %d",split_point());  // split_point() hangs.  don't know what it is for
     page_status.write_top = 1;
     find_line_range(&top_line,&bot_line);
     [view_self setNeedsDisplay:YES];
@@ -4113,19 +4135,19 @@ fill_circ_scroll_buffer_fwd() {  // write to botom of region as far as poss.
     
     dst.width = spect_wd;
     dst.loc.j = src.loc.j = 0;
-   // top_line.staff = top_line.page = 0;
-  //  top_line = bot_line;  // have no way of computing this without refering to the imap.  
-  
- //   dsth = scan_bot;  // start at the end of what was previously written
+    // top_line.staff = top_line.page = 0;
+    //  top_line = bot_line;  // have no way of computing this without refering to the imap.
+    
+    //   dsth = scan_bot;  // start at the end of what was previously written
     dsth = mod_out(ival->to.loc.i + ival->to.height);
     
     /* page = notation.page + p;
-    srch = page->map.range[l].lo;*/
+     srch = page->map.range[l].lo;*/
     srch = notation.page[p].map.range[l].lo;
-  //  while(1) {
-        for (; p < notation.n; inc_page_line(&p,&l)) {
+    //  while(1) {
+    for (; p < notation.n; inc_page_line(&p,&l)) {
         if (l == 0) srch = notation.page[p].map.range[0].lo;
-   //     if (p == notation.n)  { scan_line_num = dsth; break;}
+        //     if (p == notation.n)  { scan_line_num = dsth; break;}
         page = notation.page + p;
         src.width = page->bitmap.pixelsWide;
         src.loc.i = srch;  //page->map.range[l].lo;
@@ -4137,9 +4159,9 @@ fill_circ_scroll_buffer_fwd() {  // write to botom of region as far as poss.
         add_notation_rect(p,l,src,dst);
         dsth = end;
         srch += src.height;
-     //   inc_page_line(&p,&l);
+        //   inc_page_line(&p,&l);
         
-    } 
+    }
     scan_bot = dsth; //dst.height+dst.loc.i;
     /*if (scan_top < scan_bot)*/ scan_top = scan_bot;  // not sure what this is about
     dst.loc.i=0; dst.loc.j = spect_wd; dst.height = NOTATION_BUFFER_SIZE; dst.width = MAX_SPECT_WIDTH-spect_wd;
@@ -4162,7 +4184,7 @@ fill_circ_scroll_buffer_bwd() {  // write to botom of region as far as poss.
     
     
     scroll_bot = mod_out(notation_scroll + SPECT_HT);
-     find_line_range(&tp,&bt);
+    find_line_range(&tp,&bt);
     p = top_line.page; l = top_line.staff;  // begin writing with bot_line
     if (p == 0 && l == 0) return;
     ival = get_ival_ptr(tp);
@@ -4171,7 +4193,7 @@ fill_circ_scroll_buffer_bwd() {  // write to botom of region as far as poss.
     dec_page_line(&p,&l);
     dst.width = spect_wd;
     dst.loc.j = src.loc.j = 0;
-  //  dsth = scan_top;  // start at the end of what was previously written
+    //  dsth = scan_top;  // start at the end of what was previously written
     srch = notation.page[p].map.range[l].hi;
     for (; p >= 0; dec_page_line(&p,&l)) {
         if (l == notation.page[p].map.n-1) srch = notation.page[p].map.range[l].hi;
@@ -4183,7 +4205,7 @@ fill_circ_scroll_buffer_bwd() {  // write to botom of region as far as poss.
         dst.loc.i = mod_out(dsth - dst.height);
         if (crosses_boundary(dst.loc.i, dsth, /*notation_scroll*/ scroll_bot)) break;
         add_notation_rect(p,l,src,dst);
-   //     NSLog(@"add rect at src = %d dst = %d page = %d line = %dnotation_scroll = %d",src.loc.i,dst.loc.i,p,l,notation_scroll);
+        //     NSLog(@"add rect at src = %d dst = %d page = %d line = %dnotation_scroll = %d",src.loc.i,dst.loc.i,p,l,notation_scroll);
         dsth = dst.loc.i;
         srch = src.loc.i;
     }
@@ -4207,10 +4229,10 @@ display_next_page(int p, int l) {
     RECT src,dst;
     PAGE *page;
     
-  /*  p = page_status.pages_showing.hi;
-    l = page_status.lines_showing.hi + 1;
-    if (l == notation.page[p].staffdex.num) { l == 0; p++;}
-    if (p == notation.n) return;*/
+    /*  p = page_status.pages_showing.hi;
+     l = page_status.lines_showing.hi + 1;
+     if (l == notation.page[p].staffdex.num) { l == 0; p++;}
+     if (p == notation.n) return;*/
     
     page_status.lines_showing.lo = l;
     page_status.pages_showing.lo = p;
@@ -4250,7 +4272,7 @@ display_next_page(int p, int l) {
     NSLog(@"split point = %d",split_point());
     page_status.write_top = 1;
     [view_self setNeedsDisplay:YES];
-
+    
     
 }
 
@@ -4270,13 +4292,13 @@ display_first_page() {
     p=l=dsth=0;
     page_status.pages_showing.lo = page_status.lines_showing.lo = 0;
     page_status.pages_showing.hi = page_status.lines_showing.hi = 0;
-
+    
     fill_notation_scroll_buffer(0,0);
     print_imap(&page_status.imap);
-
-  //  fill_circ_scroll_buffer_fwd();
+    
+    //  fill_circ_scroll_buffer_fwd();
     //display_next_page(0,0);
-   // display_next_page();
+    // display_next_page();
     return;
     
     page = notation.page + p;
@@ -4289,7 +4311,7 @@ display_first_page() {
         dst.loc.i = dsth;
         dst.height = src2dst2(src.height,p,l);
         if (dst.loc.i + dst.height >= SPECT_HT) break;
-       // [view_self copyBitmap: page->bitmap source:src dest:dst];
+        // [view_self copyBitmap: page->bitmap source:src dest:dst];
         add_notation_rect(/*bitmap,*/p,l,src,dst);
         page_status.pages_showing.hi = p;
         page_status.lines_showing.hi = l;
@@ -4308,13 +4330,13 @@ display_first_page() {
     dst.loc.i = dsth;
     dst.height = SPECT_HT-dst.loc.i;
     
-  // [view_self fillImageRect: dst val:255];
+    // [view_self fillImageRect: dst val:255];
     fill_image_wide_rect(dst,255);
     dst.loc.i=0; dst.loc.j = spect_wd; dst.height = SPECT_HT; dst.width = MAX_SPECT_WIDTH-spect_wd;
-     [view_self fillImageRect: dst val:255];  // if page expanded want to see white space at right edge
+    [view_self fillImageRect: dst val:255];  // if page expanded want to see white space at right edge
     NSLog(@"split point = %d",split_point());
     page_status.write_top = 1;
-   // highlight_note_heads();
+    // highlight_note_heads();
     [view_self setNeedsDisplay:YES];
 }
 
@@ -4339,13 +4361,13 @@ display_notation_in_box(INT_RANGE range, int start_page, int start_line) {
         dst.loc.i = dsth;
         dst.height = src2dst2(src.height,p,l);
         if (dst.loc.i + dst.height >= range.hi) break;
-       // [view_self copyBitmap: page->bitmap source:src dest:dst];
+        // [view_self copyBitmap: page->bitmap source:src dest:dst];
         add_notation_rect(/*bitmap,*/p,l,src,dst);
         page_status.pages_showing.hi = p;
         page_status.lines_showing.hi = l;
         page->map.showing[l].lo = dst.loc.i + src2dst2(page->map.range[l].lo-srch,p,l);
         page->map.showing[l].hi = dst.loc.i + dst.height;
-
+        
         dsth += dst.height;
         srch += src.height;
         if (++l == page->map.n) {
@@ -4358,7 +4380,7 @@ display_notation_in_box(INT_RANGE range, int start_page, int start_line) {
     }
     dst.loc.i = dsth;
     dst.height = range.hi-dst.loc.i;
-   // [view_self fillImageRect: dst val:255];
+    // [view_self fillImageRect: dst val:255];
     fill_image_wide_rect(dst,255);
     [view_self setNeedsDisplay:YES];
 }
@@ -4368,22 +4390,22 @@ display_notation_in_box(INT_RANGE range, int start_page, int start_line) {
 
 static void
 display_visible_page() {
-  int p,l,disth;
-  PAGE *page;
-  INT_RANGE r;
-
-  p=l=disth=0;
-  init_notation();  // this might not be the right place for this ...
-  get_page_names();
-  page_status.pages_showing.lo = page_status.lines_showing.lo = 0;
-  page_status.pages_showing.hi = page_status.lines_showing.hi = 0;
-  page = notation.page + p;
-  r.lo = 0; r.hi = SPECT_HT;
-  page_status.pages_showing.lo = p;
-  page_status.lines_showing.lo = l;
-  display_notation_in_box(r, p,l);
-  page_status.write_top = 1;
-  NSLog(@"lo = %d hi = %d",page_status.lines_showing.lo,page_status.lines_showing.hi);
+    int p,l,disth;
+    PAGE *page;
+    INT_RANGE r;
+    
+    p=l=disth=0;
+    init_notation();  // this might not be the right place for this ...
+    get_page_names();
+    page_status.pages_showing.lo = page_status.lines_showing.lo = 0;
+    page_status.pages_showing.hi = page_status.lines_showing.hi = 0;
+    page = notation.page + p;
+    r.lo = 0; r.hi = SPECT_HT;
+    page_status.pages_showing.lo = p;
+    page_status.lines_showing.lo = l;
+    display_notation_in_box(r, p,l);
+    page_status.write_top = 1;
+    NSLog(@"lo = %d hi = %d",page_status.lines_showing.lo,page_status.lines_showing.hi);
 }
 
 
@@ -4394,15 +4416,15 @@ display_visible_page() {
     int last_staff,k;
     extern int SPECT_HT;
     NOTATION_SCROLL_POS nsp;
-   
+    
     //   display_first_page();  // this is for the scrolling and selecting
     display_visible_page();  // this is to do begin the half-page writing for live accompaiment with write_page_top and write_page_bot */
     cur_note = 0;
     highlight_note_head(index2nsp(0));
-
-
-   [view_self setNeedsDisplay: YES];
-   }
+    
+    
+    [view_self setNeedsDisplay: YES];
+}
 
 
 static void
@@ -4427,7 +4449,7 @@ write_page_top() {
     nxt = page->map.showing[l].hi;
     add_dotted_line((sp+nxt)/2);
     page_status.write_top = 0;
-   
+    
     NSLog(@"lo = %d hi = %d",page_status.lines_showing.lo,page_status.lines_showing.hi);
 }
 
@@ -4448,7 +4470,7 @@ write_page_bot() {
     page_status.pages_showing.lo = page_status.ptop;
     page_status.lines_showing.lo = page_status.ltop;
     NSLog(@"lo = %d hi = %d",page_status.lines_showing.lo,page_status.lines_showing.hi);
-
+    
 }
 
 
@@ -4464,7 +4486,7 @@ compare_nsps(NOTATION_SCROLL_POS nsp1, NOTATION_SCROLL_POS nsp2) {
 
 static void
 inc_nsp(NOTATION_SCROLL_POS *nsp) {
-
+    
     nsp->index++;
     if (nsp->index >= notation.page[nsp->page].staffdex.staff[nsp->staff].num) {
         nsp->index = 0;
@@ -4483,7 +4505,7 @@ head_showing(NOTATION_SCROLL_POS nsp) {
     PAGE_STAFF ps;
     
     ps.page = nsp.page; ps.staff = nsp.staff;
- //   NSLog(@"bot_line = %d %d ps = %d %d",bot_line.page,bot_line.staff,ps.page,ps.staff);
+    //   NSLog(@"bot_line = %d %d ps = %d %d",bot_line.page,bot_line.staff,ps.page,ps.staff);
     return(compare_page_staff(top_line,ps) <= 0 && compare_page_staff(bot_line,ps) >= 0);
     
     lo.page = top_line.page; lo.staff = top_line.staff; lo.index = 0;
@@ -4494,32 +4516,32 @@ head_showing(NOTATION_SCROLL_POS nsp) {
 
 static NOTATION_SCROLL_POS
 index2nsp(int i)  {
-  char tag[500],*t;
+    char tag[500],*t;
     int k;
     NOTATION_SCROLL_POS nsp;
-  
-  t = score.solo.note[i].observable_tag;
-  t += 5;  // get rid of "solo_"
-  nsp.page = nsp.staff = nsp.index = 0;
-  while(nsp.page < notation.n) {
-      if (strcmp(notation.page[nsp.page].staffdex.staff[nsp.staff].head[nsp.index].tag,t) == 0) return(nsp);
-      inc_nsp(&nsp);
-  }
+    
+    t = score.solo.note[i].observable_tag;
+    t += 5;  // get rid of "solo_"
+    nsp.page = nsp.staff = nsp.index = 0;
+    while(nsp.page < notation.n) {
+        if (strcmp(notation.page[nsp.page].staffdex.staff[nsp.staff].head[nsp.index].tag,t) == 0) return(nsp);
+        inc_nsp(&nsp);
+    }
     NSLog(@"not found ind index2nsp"); exit(0);
-  
-
-  
+    
+    
+    
 }
 
 
 static void
 modify_selected_heads(NOTATION_SCROLL_POS lo, NOTATION_SCROLL_POS hi, int add) {
-   // NSLog(@"top line = %d %d",top_line.page,top_line.staff);
+    // NSLog(@"top line = %d %d",top_line.page,top_line.staff);
     NSLog(@"hi = %d %d %d",hi.page,hi.staff,hi.index);
     while (compare_nsps(lo,hi) < 0) {
         if (head_showing(lo)) {
-          if (add) highlight_note_head(lo);
-          else unhighlight_note_head(lo);
+            if (add) highlight_note_head(lo);
+            else unhighlight_note_head(lo);
         }
         inc_nsp(&lo);
     }
@@ -4544,7 +4566,7 @@ clear_note_selection(NOTATION_SCROLL_POS last, NOTATION_SCROLL_POS this) {
     
     c = compare_nsps(this,last);
     if (c == 0) return;
-     modify_selected_heads(last,this,add=0);
+    modify_selected_heads(last,this,add=0);
     [view_self setNeedsDisplay:YES];
     
 }
@@ -4566,14 +4588,14 @@ static NOTATION_SCROLL_POS start_nsp = {-1,0,0};  // -1 means not yet set
     
     q = [self convertPoint:pt fromView:nil];
     NSLog(@"mouse: %f %f",q.x,q.y);  // leave this in to remind about the mouse moves and the computational burden of this
-    loc.i = (int) (SPECT_HT-q.y+.5); 
+    loc.i = (int) (SPECT_HT-q.y+.5);
     loc.j = (int) (q.x+.5);
-   // NSLog(@"on note? : %d",pos_on_note(loc,&head));
+    // NSLog(@"on note? : %d",pos_on_note(loc,&head));
     
     nsp = pos2nsp(loc);
     update_selection(last_nsp,nsp);
     last_nsp = nsp;
-  //  NSLog(@"nsp = %d %d %d",nsp.page,nsp.staff,nsp.index);
+    //  NSLog(@"nsp = %d %d %d",nsp.page,nsp.staff,nsp.index);
     
     
     
@@ -4603,7 +4625,7 @@ move_note_head_forward() {
     if (!last_line && ps.page == nsp.page && ps.staff == nsp.staff) {
         if (page_status.write_top) write_page_top();
         else write_page_bot();
-       
+        
     }
     [view_self setNeedsDisplay:YES];
     
@@ -4620,15 +4642,15 @@ move_note_head_forward() {
     return;
 #endif
     move_note_head_forward(); return;
-    if (page_status.write_top) write_page_top(); 
+    if (page_status.write_top) write_page_top();
     else write_page_bot();
     return;
-
-
-  /*  p = page_status.pages_showing.hi;
-    l = page_status.lines_showing.hi;
-    inc_pl(&p,&l);
-    display_next_page(p,l); return;*/
+    
+    
+    /*  p = page_status.pages_showing.hi;
+     l = page_status.lines_showing.hi;
+     inc_pl(&p,&l);
+     display_next_page(p,l); return;*/
     
     NSPoint pt = [e locationInWindow];
     
@@ -4638,10 +4660,10 @@ move_note_head_forward() {
     loc.i = mod_out(loc.i+notation_scroll);
     // NSLog(@"on note? : %d",pos_on_note(loc,&head));
     
-   /* nsp = pos2nsp(loc);
-    update_selection(last_nsp,nsp);
-    last_nsp = nsp;
-    NSLog(@"nsp = %d %d %d",nsp.page,nsp.staff,nsp.index);*/
+    /* nsp = pos2nsp(loc);
+     update_selection(last_nsp,nsp);
+     last_nsp = nsp;
+     NSLog(@"nsp = %d %d %d",nsp.page,nsp.staff,nsp.index);*/
     
     
     
@@ -4652,17 +4674,17 @@ move_note_head_forward() {
     highlight_note_head(start_nsp);
     [view_self setNeedsDisplay:YES];
     NSLog(@"on note %d %d %d",start_nsp.page,start_nsp.staff,start_nsp.index);
-  //  NSPoint p = [NSEvent mouseLocation];
-   // p.x -= 100;
-  //  p.y -= 100;
+    //  NSPoint p = [NSEvent mouseLocation];
+    // p.x -= 100;
+    //  p.y -= 100;
     
-  //  CGDisplayMoveCur
-  //  CGGetDisplaysWithPoint
-   /*
-    CGEventRef ourEvent = CGEventCreate(NULL);
-    CGPoint mouseLocation = CGEventGetLocation(ourEvent);
-    mouseLocation.x += 100;
-    CGWarpMouseCursorPosition(mouseLocation);*/
+    //  CGDisplayMoveCur
+    //  CGGetDisplaysWithPoint
+    /*
+     CGEventRef ourEvent = CGEventCreate(NULL);
+     CGPoint mouseLocation = CGEventGetLocation(ourEvent);
+     mouseLocation.x += 100;
+     CGWarpMouseCursorPosition(mouseLocation);*/
     
 }
 
@@ -4691,8 +4713,8 @@ needs_notation_buffer_refresh() {
     }
     else {
         if (top_line.page == 0 && top_line.staff == 0) return(0);
-               d = mod_out(notation_scroll-/*scan_top*/scan_bot);
-   //     NSLog(@" d = %d",d);
+        d = mod_out(notation_scroll-/*scan_top*/scan_bot);
+        //     NSLog(@" d = %d",d);
         if (d < REFRESH_MARGIN) NSLog(@"needs refresh scrolling up");
         return(d < REFRESH_MARGIN);
         
@@ -4774,9 +4796,9 @@ increment_scroll_pos(int inc) {
     
     notation_scroll = mod_out(notation_scroll + inc);
     [view_self setNeedsDisplay:YES];
-     if ( needs_notation_buffer_refresh_arg(inc)) {
-         if (inc > 0) fill_circ_scroll_buffer_fwd();
-         else fill_circ_scroll_buffer_bwd();
+    if ( needs_notation_buffer_refresh_arg(inc)) {
+        if (inc > 0) fill_circ_scroll_buffer_fwd();
+        else fill_circ_scroll_buffer_bwd();
     }
 }
 
@@ -4789,11 +4811,11 @@ increment_scroll_pos(int inc) {
     int at_top,at_bot,d;
     
     
-  /*  CGEventRef ourEvent = CGEventCreate(NULL);
-    CGPoint mouseLocation = CGEventGetLocation(ourEvent);
-    q = [self convertPoint:p toView: nil];*/
-
-   q =  [self convertPoint:[[self window] mouseLocationOutsideOfEventStream] fromView:nil];
+    /*  CGEventRef ourEvent = CGEventCreate(NULL);
+     CGPoint mouseLocation = CGEventGetLocation(ourEvent);
+     q = [self convertPoint:p toView: nil];*/
+    
+    q =  [self convertPoint:[[self window] mouseLocationOutsideOfEventStream] fromView:nil];
     d = SCROLL_INC*scroll_dir;
     if (is_at_top_inc(d) || is_at_bot_inc(d) || (q.y > 10 &&  q.y < SPECT_HT-10)) {
         [nsTimer invalidate]; nsTimer = nil;
@@ -4803,18 +4825,18 @@ increment_scroll_pos(int inc) {
     
     increment_scroll_pos(d);
     return;
-   
-    /*
     
-   // NSLog(@"mouse at %f %f scroll at %d",q.x,q.y,notation_scroll);
-    notation_scroll = mod_out(notation_scroll + SCROLL_INC*scroll_dir);
-    [view_self setNeedsDisplay:YES];
-    if (needs_notation_buffer_refresh()) {
-       
-        if (scroll_dir == 1) fill_circ_scroll_buffer_fwd();
-        else fill_circ_scroll_buffer_bwd();
-         NSLog(@"refreshing  scroll_dir = %d now showing %d %d to %d %d",scroll_dir, top_line.page,top_line.staff,bot_line.page,bot_line.staff);
-    }*/
+    /*
+     
+     // NSLog(@"mouse at %f %f scroll at %d",q.x,q.y,notation_scroll);
+     notation_scroll = mod_out(notation_scroll + SCROLL_INC*scroll_dir);
+     [view_self setNeedsDisplay:YES];
+     if (needs_notation_buffer_refresh()) {
+     
+     if (scroll_dir == 1) fill_circ_scroll_buffer_fwd();
+     else fill_circ_scroll_buffer_bwd();
+     NSLog(@"refreshing  scroll_dir = %d now showing %d %d to %d %d",scroll_dir, top_line.page,top_line.staff,bot_line.page,bot_line.staff);
+     }*/
 }
 
 
@@ -4831,20 +4853,20 @@ window_pt2loc(NSPoint q) {  // convert window coords (origin at lower left) to L
 
 
 /*NSPoint initial_touch_pos;
-int initial_scroll_pos;
-
-- (void)touchesBeganWithEvent:(NSEvent *)ev {
-   
-    NSSet *touches = [ev touchesMatchingPhase:NSTouchPhaseBegan inView:self];
-     NSLog(@"got touch with %d fingers",touches.count);
-    for (NSTouch *touch in touches) {
-        
-        initial_touch_pos = touch.normalizedPosition;
-        initial_scroll_pos = notation_scroll;
-        break; // just use first finger found
-      //  NSPoint fraction = touch.normalizedPosition;
-    }
-}*/
+ int initial_scroll_pos;
+ 
+ - (void)touchesBeganWithEvent:(NSEvent *)ev {
+ 
+ NSSet *touches = [ev touchesMatchingPhase:NSTouchPhaseBegan inView:self];
+ NSLog(@"got touch with %d fingers",touches.count);
+ for (NSTouch *touch in touches) {
+ 
+ initial_touch_pos = touch.normalizedPosition;
+ initial_scroll_pos = notation_scroll;
+ break; // just use first finger found
+ //  NSPoint fraction = touch.normalizedPosition;
+ }
+ }*/
 
 - (void) scrollWithEvent: (NSEvent *) ev {
     NSLog(@"scroll gesture");
@@ -4856,32 +4878,32 @@ int initial_scroll_pos;
 
 - (void) scrollWheel: (NSEvent *) ev {
     int d;
-     d =  [ev scrollingDeltaY];
+    d =  [ev scrollingDeltaY];
     if (d == 0) return;
     increment_scroll_pos(d);
-   /* notation_scroll += d;
-    [view_self setNeedsDisplay:YES];*/
+    /* notation_scroll += d;
+     [view_self setNeedsDisplay:YES];*/
     // if (x != 0)  NSLog(@"scroll event (two finger scroll?) %f ",x);
-
+    
 }
 
 
 /*- (void)touchesMovedWithEvent:(NSEvent *)ev {
-    NSPoint pt;
-    NSLog(@"touch moved");
-    
-    NSSet *touches = [ev touchesMatchingPhase:NSTouchPhaseBegan inView:self];
-    
-    for (NSTouch *touch in touches) {
-      
-        pt = touch.normalizedPosition;
-        break;
-        notation_scroll = initial_scroll_pos + (pt.y-initial_touch_pos.y);
-    
-    }
-    notation_scroll = initial_scroll_pos + (pt.y-initial_touch_pos.y);
-    [view_self setNeedsDisplay:YES];
-}*/
+ NSPoint pt;
+ NSLog(@"touch moved");
+ 
+ NSSet *touches = [ev touchesMatchingPhase:NSTouchPhaseBegan inView:self];
+ 
+ for (NSTouch *touch in touches) {
+ 
+ pt = touch.normalizedPosition;
+ break;
+ notation_scroll = initial_scroll_pos + (pt.y-initial_touch_pos.y);
+ 
+ }
+ notation_scroll = initial_scroll_pos + (pt.y-initial_touch_pos.y);
+ [view_self setNeedsDisplay:YES];
+ }*/
 
 - (void)mouseDragged:(NSEvent *)e {
     NSPoint q;
@@ -4895,30 +4917,30 @@ int initial_scroll_pos;
     
     q = [self convertPoint:pt fromView:nil];
     screen_loc = window_pt2loc(q);
-   /* screen_loc.i = (int) (SPECT_HT-q.y+.5);
-    if (screen_loc.i < 0) screen_loc.i = 0;
-    if (screen_loc.i >= SPECT_HT) screen_loc.i = SPECT_HT-1;
-    screen_loc.j = (int) (q.x+.5);*/
+    /* screen_loc.i = (int) (SPECT_HT-q.y+.5);
+     if (screen_loc.i < 0) screen_loc.i = 0;
+     if (screen_loc.i >= SPECT_HT) screen_loc.i = SPECT_HT-1;
+     screen_loc.j = (int) (q.x+.5);*/
     scroll_dn = (screen_loc.i > (SPECT_HT-10));
     scroll_up = (screen_loc.i < 10);
     if ((scroll_up || scroll_dn) && nsTimer == nil) {
-    NSLog(@"time to scroll");
-    nsTimer =  [NSTimer scheduledTimerWithTimeInterval:0.01
-                                                target:view_self
-                                              selector:@selector(scroll_timer)
-                                              userInfo:NULL
-                                               repeats:YES];
+        NSLog(@"time to scroll");
+        nsTimer =  [NSTimer scheduledTimerWithTimeInterval:0.01
+                                                    target:view_self
+                                                  selector:@selector(scroll_timer)
+                                                  userInfo:NULL
+                                                   repeats:YES];
         if (scroll_up) scroll_dir = -1;
         if (scroll_dn) scroll_dir = 1;
     }
     if (start_nsp.page == -1) return; // start not set yet
     score_loc = screen_loc;
-   // score_loc.i += notation_scroll;  // should be mod NOTATION_BUFFER_SIZE?
+    // score_loc.i += notation_scroll;  // should be mod NOTATION_BUFFER_SIZE?
     score_loc.i = mod_out(score_loc.i+notation_scroll);
-  //  score_loc.i = (score_loc.i+notation_scroll)%NOTATION_BUFFER_SIZE;
+    //  score_loc.i = (score_loc.i+notation_scroll)%NOTATION_BUFFER_SIZE;
     nsp = pos2nsp(score_loc);
     if (compare_nsps(nsp,start_nsp) < 0) return;  // only meaningful if after start_nsp
-  //  NSLog(@"nsp = %d %d %d",nsp.page,nsp.staff,nsp.index);
+    //  NSLog(@"nsp = %d %d %d",nsp.page,nsp.staff,nsp.index);
     update_selection(last_nsp,nsp);
     last_nsp = nsp;
 }

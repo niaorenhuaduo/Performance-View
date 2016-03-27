@@ -1,19 +1,19 @@
 
 
 
-   /* external variables */
+/* external variables */
 
 
 extern int upgrade_purchased;
-extern int buffer_shift; 
-extern unsigned int unique_id;  
+extern int buffer_shift;
+extern unsigned int unique_id;
 extern int show_rests;
 extern int clicks_in;
 extern int ensemble_in;
 extern int currently_playing;
 extern int playing_opening_clip;
 extern char full_score_name[]; /* path and filename of score name without suffix  */
-extern char score_dir[]; 
+extern char score_dir[];
 extern int mode;     /* real-time etc. */
 extern int frames;   /* number of frames in total sample */
 extern int accomp_on_speakers;
@@ -65,8 +65,8 @@ extern unsigned char *orchdata;  /* raw sound data from orchestra */
 extern float restspect[];
 extern float orchestra_spect[];
 extern float unscaled_orchestra_spect[];
-extern float *orch_data_frame;  
-extern unsigned char *audiodata;  
+extern float *orch_data_frame;
+extern unsigned char *audiodata;
 extern char scoretag[];
 extern TEMPO_LIST tempo_list;
 extern int stop_playing_flag;
@@ -90,10 +90,10 @@ extern RANGE_LIST range_hist;
 extern float room_response[FREQDIM/2];
 extern int hyp_mask[FREQDIM/2];
 extern int delay_seconds;
-//extern int timer_position;  
+//extern int timer_position;
 extern BACKGROUND_INFO background_info;
-extern int freq_cutoff;   
-extern int play_thread_active; 
+extern int freq_cutoff;
+extern int play_thread_active;
 extern CD_INFO cd_info;
 extern int midi_accomp;
 extern int play_frames_buffered;
@@ -125,10 +125,15 @@ extern float inst_freq[];
 extern int inst_fbin[];
 extern float inst_amp[];
 extern float window[FRAMELEN];
+extern float coswindow[FRAMELEN];
 extern init_window();
+extern init_cos_window();
 extern float princarg(float phasein);
 extern unsigned char *synth_pitch;
 extern int play_synthesis;
+extern int test_audio_wave;
+extern int last_analyzed_frame;
+extern int first_analyzed_frame;
 
 
 
