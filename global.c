@@ -55,6 +55,7 @@ int play_synthesis = 0;
 int test_audio_wave = 0;
 int last_analyzed_frame = 0;
 int first_analyzed_frame = 0;
+int frame_resolution = 4; //increase frame resolution of 8000/256 by this factor
 unsigned char *synth_pitch;
 char scoretag[500] = {0};
 TEMPO_LIST tempo_list;

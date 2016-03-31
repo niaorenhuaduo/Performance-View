@@ -100,6 +100,7 @@
 #define FRAMELEN 512     /* size of data chunk for evaluation */
 #define SKIPLEN  256     /* samples between the starts of sucessive frames */
 #define TOKENLEN  SKIPLEN //256     /* size of data chunk for evaluation */
+#define FRAMELEN_PITCH 256 /*size of frame when estimating instantaneous pitch */
 /* kth frame includes samples from  
 
     (k+1)*SKIPLEN - FRAMELEN -->  (k+1)*SKIPLEN

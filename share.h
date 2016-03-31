@@ -100,6 +100,7 @@
 
 #define LOG_FILE "log.txt"
 #define FRAMELEN 512     /* size of data chunk for evaluation */
+#define FRAMELEN_PITCH 256 /*size of frame when estimating instantaneous pitch */
 #define SKIPLEN  256     /* samples between the starts of sucessive frames */
 #define TOKENLEN  SKIPLEN //256     /* size of data chunk for evaluation */
 /* kth frame includes samples from  

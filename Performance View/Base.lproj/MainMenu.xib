@@ -679,7 +679,7 @@
                 <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                 <subviews>
                     <customView toolTip="spectrogram of rehearsal" appearanceType="aqua" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="wkg-6L-Vl4" customClass="MyNSView">
-                        <rect key="frame" x="-782" y="203" width="2066" height="512"/>
+                        <rect key="frame" x="-826" y="196" width="2066" height="512"/>
                         <subviews>
                             <scrollView fixedFrame="YES" autohidesScrollers="YES" horizontalLineScroll="19" horizontalPageScroll="10" verticalLineScroll="19" verticalPageScroll="10" usesPredominantAxisScrolling="NO" translatesAutoresizingMaskIntoConstraints="NO" id="tyk-8G-C9x">
                                 <rect key="frame" x="71" y="793" width="240" height="37"/>
@@ -729,7 +729,7 @@
                                     <rect key="frame" x="1" y="8" width="0.0" height="15"/>
                                     <autoresizingMask key="autoresizingMask"/>
                                 </scroller>
-                                <scroller key="verticalScroller" verticalHuggingPriority="750" doubleValue="1" horizontal="NO" id="VT8-vy-BEl">
+                                <scroller key="verticalScroller" verticalHuggingPriority="750" doubleValue="0.16666666666666666" horizontal="NO" id="VT8-vy-BEl">
                                     <rect key="frame" x="224" y="23" width="15" height="13"/>
                                     <autoresizingMask key="autoresizingMask"/>
                                 </scroller>
@@ -740,18 +740,8 @@
                             </scrollView>
                         </subviews>
                     </customView>
-                    <button fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="8Pg-vs-oFU">
-                        <rect key="frame" x="406" y="196" width="69" height="50"/>
-                        <buttonCell key="cell" type="square" bezelStyle="shadowlessSquare" image="Music+1-playhead-nav-controls-PLAY-OFF" imagePosition="overlaps" alignment="center" alternateImage="Music+1-playhead-nav-controls-STOP-OFF" imageScaling="proportionallyDown" inset="2" id="HE8-SS-UN7">
-                            <behavior key="behavior" pushIn="YES" changeContents="YES" lightByContents="YES"/>
-                            <font key="font" metaFont="system"/>
-                        </buttonCell>
-                        <connections>
-                            <action selector="SpectPlayToggle:" target="Voe-Tx-rLC" id="fJI-WY-GdA"/>
-                        </connections>
-                    </button>
                     <button fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="TEr-zZ-zwh">
-                        <rect key="frame" x="459" y="196" width="75" height="50"/>
+                        <rect key="frame" x="806" y="111" width="75" height="50"/>
                         <buttonCell key="cell" type="bevel" bezelStyle="regularSquare" image="Music+1-playhead-nav-controls-RIGHT-OFF" imagePosition="left" alignment="center" alternateImage="Music+1-playhead-nav-controls-RIGHT-ON" imageScaling="proportionallyDown" inset="2" id="4ym-MD-8Js">
                             <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
                             <font key="font" metaFont="system"/>
@@ -761,7 +751,7 @@
                         </connections>
                     </button>
                     <button fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="QfB-5w-Jds">
-                        <rect key="frame" x="338" y="196" width="77" height="50"/>
+                        <rect key="frame" x="684" y="111" width="77" height="50"/>
                         <buttonCell key="cell" type="bevel" bezelStyle="regularSquare" image="Music+1-playhead-nav-controls-LEFT-OFF" imagePosition="right" alignment="center" alternateImage="Music+1-playhead-nav-controls-LEFT-ON" imageScaling="proportionallyDown" inset="2" id="rcO-nz-Jug">
                             <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
                             <font key="font" metaFont="system"/>
@@ -770,8 +760,38 @@
                             <action selector="RefinePrevButtonAction:" target="Voe-Tx-rLC" id="7YS-Q4-1Ic"/>
                         </connections>
                     </button>
+                    <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="qSx-hs-0kt">
+                        <rect key="frame" x="14" y="204" width="101" height="32"/>
+                        <buttonCell key="cell" type="push" title="Read Audio" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="lNW-lp-uj8">
+                            <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
+                            <font key="font" metaFont="system"/>
+                        </buttonCell>
+                        <connections>
+                            <action selector="ReadAudio:" target="Voe-Tx-rLC" id="UXk-Fn-rH6"/>
+                        </connections>
+                    </button>
+                    <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="fIM-IB-qMS">
+                        <rect key="frame" x="4" y="104" width="82" height="32"/>
+                        <buttonCell key="cell" type="push" title="Save" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="3CV-EG-afT">
+                            <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
+                            <font key="font" metaFont="system"/>
+                            <connections>
+                                <action selector="SaveRefinementAction:" target="Voe-Tx-rLC" id="PAa-5m-pXx"/>
+                            </connections>
+                        </buttonCell>
+                    </button>
+                    <button fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="8Pg-vs-oFU">
+                        <rect key="frame" x="751" y="111" width="69" height="50"/>
+                        <buttonCell key="cell" type="square" bezelStyle="shadowlessSquare" image="Music+1-playhead-nav-controls-PLAY-OFF" imagePosition="overlaps" alignment="center" alternateImage="Music+1-playhead-nav-controls-STOP-OFF" imageScaling="proportionallyDown" inset="2" id="HE8-SS-UN7">
+                            <behavior key="behavior" pushIn="YES" changeContents="YES" lightByContents="YES"/>
+                            <font key="font" metaFont="system"/>
+                        </buttonCell>
+                        <connections>
+                            <action selector="SpectPlayToggle:" target="Voe-Tx-rLC" id="fJI-WY-GdA"/>
+                        </connections>
+                    </button>
                     <tabView appearanceType="aqua" fixedFrame="YES" type="bottomTabsBezelBorder" initialItem="cnP-Nv-pPZ" translatesAutoresizingMaskIntoConstraints="NO" id="eXL-tc-5v0">
-                        <rect key="frame" x="143" y="17" width="611" height="175"/>
+                        <rect key="frame" x="81" y="41" width="611" height="175"/>
                         <font key="font" metaFont="system"/>
                         <tabViewItems>
                             <tabViewItem label="Options" identifier="1" id="cnP-Nv-pPZ">
@@ -1149,31 +1169,12 @@
                             </tabViewItem>
                         </tabViewItems>
                     </tabView>
-                    <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="qSx-hs-0kt">
-                        <rect key="frame" x="14" y="204" width="101" height="32"/>
-                        <buttonCell key="cell" type="push" title="Read Audio" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="lNW-lp-uj8">
-                            <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
-                            <font key="font" metaFont="system"/>
-                        </buttonCell>
-                        <connections>
-                            <action selector="ReadAudio:" target="Voe-Tx-rLC" id="UXk-Fn-rH6"/>
-                        </connections>
-                    </button>
-                    <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="fIM-IB-qMS">
-                        <rect key="frame" x="4" y="104" width="82" height="32"/>
-                        <buttonCell key="cell" type="push" title="Save" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="3CV-EG-afT">
-                            <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
-                            <font key="font" metaFont="system"/>
-                            <connections>
-                                <action selector="SaveRefinementAction:" target="Voe-Tx-rLC" id="PAa-5m-pXx"/>
-                            </connections>
-                        </buttonCell>
-                    </button>
                 </subviews>
             </view>
             <connections>
                 <outlet property="delegate" destination="Voe-Tx-rLC" id="mfV-If-kjB"/>
             </connections>
+            <point key="canvasLocation" x="569" y="842.5"/>
         </window>
     </objects>
     <resources>

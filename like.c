@@ -334,6 +334,7 @@ float xxx_last_spect[1000];
 
 float window[FRAMELEN];
 float coswindow[FRAMELEN];
+float coswindow2[FRAMELEN_PITCH];
 static float beta[FREQDIM/2];
 
 #define WIND_WIDTH 3.
@@ -358,6 +359,17 @@ init_cos_window() {
     for (i=0; i < FRAMELEN; i++)  {
         x = i*2*PI/(FRAMELEN+1);
         coswindow[i] = (1 + cosf(x - PI))/2;
+        //printf("\nwindow at i = %d: %f", i, coswindow[i]);
+    }
+}
+
+init_cos_window2() {
+    float hz, x;
+    int i;
+    
+    for (i=0; i < FRAMELEN_PITCH; i++)  {
+        x = i*2*PI/(FRAMELEN_PITCH+1);
+        coswindow2[i] = (1 + cosf(x - PI))/2;
         //printf("\nwindow at i = %d: %f", i, coswindow[i]);
     }
 }
@@ -401,6 +413,7 @@ init_beta() {
 init_like() {
     init_window();
     init_cos_window();
+    init_cos_window2();
     init_beta();
 }
 

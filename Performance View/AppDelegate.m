@@ -23,7 +23,7 @@ INC_VALS inc_vals;
 
 - (void)applicationDidFinishLaunching:(NSNotification *)aNotification
 {
-    strcpy(user_dir,"/Users/apple/Dropbox/Music informatics/Performance-View/user/"); //???moved this higher, it came after setIncButtons
+    strcpy(user_dir,"/Users/apple/Documents/Performance-View/user/"); //???moved this higher, it came after setIncButtons
 
     
     maininit();
