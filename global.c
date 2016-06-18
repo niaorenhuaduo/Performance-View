@@ -57,6 +57,7 @@ int last_analyzed_frame = 0;
 int first_analyzed_frame = 0;
 int frame_resolution = 4; //increase frame resolution of 8000/256 by this factor
 unsigned char *synth_pitch;
+float *cumsum_freq;
 char scoretag[500] = {0};
 TEMPO_LIST tempo_list;
 int stop_playing_flag=1;

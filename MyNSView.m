@@ -142,72 +142,59 @@ rem_click(int m) {
 #define MOVING_LINE_COLOR COLOR_BLUE
 
 
-
-void synth_overtones(int offset1, int offset2, float f1, float f2, float a1, float a2, int overtone_num, int sr, float *phi, float scale) {
-    float wav, g, time, delta;
-    int samples = offset2 - offset1;
-    float time_frame = (float) (samples) / sr; //time difference in seconds
-    float f_diff = f2 - f1; //freq difference
-    float a_diff = a2 - a1; //amplitude difference
-    float amp = 0.3;
-    for (int j = offset1; j < offset2; j++) {
-        wav = 0;
-        delta = (float) (j-offset1)/(samples);
-        time = time_frame * delta;
-        amp = (a1 + a_diff * delta) * scale;
-        amp = 0.015;
-        g = PI * (f_diff * time * time / time_frame + 2 * f1 * time);
-        //g = 2 * PI * time_frame * f1 * expf(logf(f2/f1) * time / time_frame) / logf(f2 / f1);
-        for (int i = 1; i <= overtone_num; i++) {
-            wav += (float) amp/i * sinf(i*g + i * (*phi) + i * 0.1);
+void interpolate_freq() {
+    int startframe = score.solo.note[1].frames, offset1;
+    float pitch_diff;
+    int samps_per_frame = SKIPLEN * IO_FACTOR;
+    for (int i = first_analyzed_frame; i < last_analyzed_frame - 1; i++) {
+        offset1 = first_analyzed_frame * SKIPLEN * IO_FACTOR +(i - first_analyzed_frame) * SKIPLEN * IO_FACTOR;  //8000 k to 48000k
+  //8000 k to 48000k
+        pitch_diff = inst_freq[i+1] - inst_freq[i];
+        for (int j = offset1; j < offset1 + samps_per_frame; j++) {
+            cumsum_freq[j] = inst_freq[i] + pitch_diff * (float) (j - offset1) / samps_per_frame;
+            float temp = cumsum_freq[j];
         }
-        float2sample(wav, synth_pitch + j * 2);
     }
-    *phi = fmodf(*phi + g, (2*PI));
 }
 
+void cumulative_sum(int sr) {
+    double curr = (double) cumsum_freq[0] / sr ;
+    cumsum_freq[0] = (float) curr;
+    for (int i = 1; i < MAX_SAMPLE; i++) {
+        curr += (double) 2*PI*cumsum_freq[i] / sr;
+        if (curr >= 2*PI) curr -= 2*PI*floor(curr/(2*PI));
+        cumsum_freq[i] = (float) curr;
+        if (i%100 == 0) printf("\n%f", cumsum_freq[i]);
 
-void resynth_solo(int sr) { //linear interpolation
-    char stump[500];
-    int offset1, offset2, overtone_num = 7, startframe;
-    float amp, scale = 0.5, phase_shift;
-    startframe = score.solo.note[1].frames;
-    phase_shift = 0;
-    for (int i = first_analyzed_frame; i < last_analyzed_frame - 1; i++) { //5000 is length of inst_freq[]
-        offset1 = (i) * SKIPLEN * IO_FACTOR;  //change 8000 k to sr = 48000k
-        int xxx = SKIPLEN;
-        offset2 = (i+1) * SKIPLEN * IO_FACTOR;
-        synth_overtones(offset1, offset2, inst_freq[i], inst_freq[i+1], sqrtf(inst_amp[i]), sqrtf(inst_amp[i+1]), overtone_num, sr, &phase_shift, scale);
+        //if (i >= score.solo.note[1].frames * SKIPLEN * IO_FACTOR)printf("\ncumsum freq = %f",  cumsum_freq[i]);
     }
+    
+}
+
+void synth_audio(overtone_num) {
+    float wav;
+    float amp = 0.015;
+    for (int i = 0; i < MAX_SAMPLE; i++) {
+        wav = 0;
+        for (int j = 1; j <= overtone_num; j++) {
+            wav += (float) amp/j * sinf(cumsum_freq[i] + j * 0.1);
+        }
+        //if (i >= score.solo.note[1].frames * SKIPLEN * IO_FACTOR)printf("\nwav = %f",  wav);
+        float2sample(wav, synth_pitch + i * 2);
+    }
+}
+
+void resynth_solo(int sr) { //use cumsum instead of concatenating sine waves
+    int overtone_num = 7;
+    char stump[500];
+    interpolate_freq();
+    cumulative_sum(sr);
+    synth_audio(overtone_num);
     FILE *fp;
     strcpy(stump,audio_data_dir);
     strcat(stump, "synth_pitch");
     fp = fopen(stump, "wb");
-    fwrite(synth_pitch,48000*60 ,BYTES_PER_SAMPLE, fp);
-    fclose(fp);
-    play_synthesis = 1;
-}
-
-
-void resynth_solo2(int sr) { //linear interpolation
-    char stump[500];
-    int offset1, offset2, overtone_num = 7, startframe;
-    float amp, scale = 0.5, phase_shift;
-    startframe = score.solo.note[1].frames;
-    phase_shift = 0;
-    //indx = pos + (pos - score.solo.note[1].frames) * (frame_resolution - 1); //index for inst_freq array which stores frame_resolution values per frame
-    for (int i = first_analyzed_frame; i < last_analyzed_frame * frame_resolution - 1; i++) { //5000 is length of inst_freq[]
-        offset1 = (first_analyzed_frame * SKIPLEN * IO_FACTOR)+ (i - first_analyzed_frame)*(float) SKIPLEN/frame_resolution * IO_FACTOR;  //8000 k to 48000k
-        offset2 = offset1 + (float) SKIPLEN / frame_resolution * IO_FACTOR;
-        //synth_overtones(offset1, offset2, inst_freq[i], inst_freq[i+1], sqrtf(inst_amp[i]), sqrtf(inst_amp[i+1]), overtone_num, sr, &phase_shift, scale);
-        synth_overtones(offset1, offset2, inst_freq[i], inst_freq[i+1], 0.015, 0.015, overtone_num, sr, &phase_shift, scale);
-    }
-    FILE *fp;
-    strcpy(stump,audio_data_dir);
-    strcat(stump, "synth_pitch");
-    fp = fopen(stump, "wb");
-    //fwrite(synth_pitch, frames*(TOKENLEN*IO_FACTOR),BYTES_PER_SAMPLE, fp);
-    fwrite(synth_pitch,48000*60,BYTES_PER_SAMPLE, fp);
+    fwrite(synth_pitch,MAX_SAMPLE,BYTES_PER_SAMPLE, fp);
     fclose(fp);
     play_synthesis = 1;
 }
@@ -515,7 +502,45 @@ int calc_inst_freq_bin(int pos, int bin) {
     inst_freq[pos] = ph_inc * (float) SR / (2 * PI * inc); //actual instantaneous frequency
     
     float tempp = inst_freq[pos];
-    printf("\n inst pitch = %f", tempp);
+    //printf("\n inst pitch = %f", tempp);
+    
+    inst_bin = hz2omega(inst_freq[pos]);
+    return (int) inst_bin;
+}
+
+int calc_inst_freq_bin4(int pos, int bin) {
+    
+    float binf = (float) bin/2; //bin value on spectrogram is 2*the actual value
+    int offset, inc;
+    unsigned char *ptr1;
+    unsigned char *ptr2;
+    float inst_bin, tp1[FRAMELEN_PITCH], tp2[FRAMELEN_PITCH], ph1, ph2, omega, ph_inc, i1, i2, r1, r2, c, ratio;
+    ratio = (float) FRAMELEN_PITCH/FRAMELEN;
+    inc = 20; //number of samples between first and second frames for phase-based pitch calculation
+    offset = pos*SKIPLEN*BYTES_PER_SAMPLE;
+    ptr1 = audiodata + offset;
+    ptr2 = ptr1 + inc*2; //advance by 2 unsigned char per sample in audiodata
+    samples2floats(ptr1, tp1, FRAMELEN_PITCH);
+    samples2floats(ptr2, tp2, FRAMELEN_PITCH);
+    i1 = i2 = r1 = r2 = 0; //calculate fft for this bin for the chunks starting at ptr1 and ptr2
+    c = 2*PI*binf*ratio / FRAMELEN_PITCH;
+    for (int j=0; j<FRAMELEN_PITCH; j++) {
+        i1 -= tp1[j] * sinf(c * j) * coswindow[j];
+        i2 -= tp2[j] * sinf(c * j) * coswindow[j];
+        r1 += tp1[j] * cosf(c * j) * coswindow[j];
+        r2 += tp2[j] * cosf(c * j) * coswindow[j];
+    }
+    omega = 2 * PI * binf * (float) inc * ratio / FRAMELEN_PITCH; //expected number of cycles per increment
+    
+    ph1 = atan2f(i1, r1); //get phase increment
+    ph2 = atan2f(i2, r2);
+    float phtemp = princarg(ph2 - ph1 - omega);
+    //printf("\n phase incr new = %f", phtemp);
+    ph_inc = omega + princarg(ph2 - ph1 - omega); //add increment between -pi and +pi
+    inst_freq[pos] = ph_inc * (float) SR / (2 * PI * inc); //actual instantaneous frequency
+    
+    float tempp = inst_freq[pos];
+    //printf("\n inst pitch = %f", tempp);
     
     inst_bin = hz2omega(inst_freq[pos]);
     return (int) inst_bin;
@@ -555,7 +580,7 @@ int calc_inst_freq_bin2(int pos, int bin) {
     inst_freq[pos] = ph_inc * (float) SR / (2 * PI * inc); //actual instantaneous frequency
     
     float tempp = inst_freq[pos];
-    printf("\n inst pitch = %f", tempp);
+    //printf("\n inst pitch = %f", tempp);
     
     inst_bin = hz2omega(inst_freq[pos]);
     return (int) inst_bin;
@@ -571,7 +596,7 @@ int calc_inst_freq_bin3(int pos, int bin) {
     unsigned char *ptr2;
     float inst_bin, tp1[FRAMELEN_PITCH], tp2[FRAMELEN_PITCH], ph1, ph2, omega, ph_inc, i1, i2, r1, r2, c; //FREQDIM is 1024
     
-    inc = 50; //number of samples between first and second frames for phase-based pitch calculation
+    inc = 20; //number of samples between first and second frames for phase-based pitch calculation
     indx = pos + (pos - score.solo.note[1].frames) * (frame_resolution - 1); //index for inst_freq array which stores frame_resolution values per frame
     for (int i = pos; i < pos + frame_resolution; i++) {
         
@@ -599,7 +624,7 @@ int calc_inst_freq_bin3(int pos, int bin) {
     }
     
     float tempp = inst_freq[pos];
-    printf("\n inst pitch = %f", tempp);
+    //printf("\n inst pitch = %f", tempp);
     
     inst_bin = hz2omega(inst_freq[indx]);
     return (int) inst_bin;
@@ -634,8 +659,8 @@ void calc_max_bin(int startpos, int endpos, int fbin) {
         
     }
     for (int j = startpos; j < endpos; j++) {
-        //inst_fbin[j] = calc_inst_freq_bin(j, inst_fbin[j]); //calculate instantaneous pitch using selected bin
-        inst_fbin[j] = calc_inst_freq_bin3(j, inst_fbin[j]); //increased resolution
+        inst_fbin[j] = calc_inst_freq_bin4(j, inst_fbin[j]); //calculate instantaneous pitch using selected bin
+        //inst_fbin[j] = calc_inst_freq_bin3(j, inst_fbin[j]); //increased resolution
     }
     
 }
@@ -1102,7 +1127,7 @@ highlight_solo_notes() {
     add_clicks();
     draw_note_markers(1);
     draw_pitch(1);
-    resynth_solo2(48000);
+    resynth_solo(48000);
     highlight_neighbor_note(0);  //(increment = 0) add text pos and green for current note
     // xxx this makes program crash after live performance sometimes
     draw_ruler();

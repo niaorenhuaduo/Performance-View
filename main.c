@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#include "share.c"
+#include "share.h"
 #include "global.h"
 #include "dp.h"
 #include "linux.h"
@@ -64,8 +64,10 @@ alloc_audio_buff() {
     
     audiodata = (unsigned char*) malloc(MAXAUDIO);
     if (audiodata == NULL) printf("couldn't allocate audio data buffer\n");
-    synth_pitch = (unsigned char*) malloc(MAXAUDIO);
+    synth_pitch = (unsigned char*) malloc(MAX_SAMPLE*2);
     if (synth_pitch == NULL) printf("couldn't allocate synth pitch buffer\n");
+    cumsum_freq = (float*) malloc(MAX_SAMPLE);
+    if (cumsum_freq == NULL) printf("couldn't allocate synth pitch buffer\n");
     //  printf("max frames = %d\n",MAX_FRAMES); exit(0);
 #ifdef ORCHESTRA_EXPERIMENT
     orchdata = (unsigned char*) malloc(MAXAUDIO);

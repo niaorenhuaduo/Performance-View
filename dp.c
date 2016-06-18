@@ -4178,6 +4178,7 @@ get_parse_type(char *s) {
   }
   fclose(fp);
   printf("type of %s = %d\n",s,tab);
+    
   return(tab);
 }
 
@@ -4247,6 +4248,7 @@ int
   }
   start_meas = end_meas = HUGE_VAL;
   fscanf(fp,"%s = %s\n",name,start_string);
+    
   if (strcmp(name,"start_pos") != 0) {
     printf("unknown format in %s (name = %s)\n",file,name);
     return(0);
@@ -4276,7 +4278,7 @@ int
     if (type == 2) fscanf(fp,"%s %f %d",tag,&time,&j); //use this to read new style
     else fscanf(fp,"%s %f",tag,&time);
     if (feof(fp)) break;
-    for (i=i0; i <= lastnote; i++) 
+    for (i=i0; i <= lastnote; i++)
       if (strcmp(tag,score.solo.note[i].observable_tag) == 0) break;
     if (i > lastnote) continue;
     i0 = i;  // last found note
@@ -4286,7 +4288,7 @@ int
     score.solo.note[i].off_line_secs = toks2secs(time);
     score.solo.note[i].set_by_hand = j;
   }
-  fclose(fp); 
+  fclose(fp);
   return(1);
 }
 

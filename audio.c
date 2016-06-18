@@ -176,7 +176,7 @@ void create_test_audiodata() {
         f = 800;
         delta = 100;
         v = 10;
-        g = 2*PI*f*(float) i/SR - (float) delta/v*cos(2*PI*v*(float)i/SR);
+        g = 2*PI*f*(float) i/SR - (float) delta/v*cosf(2*PI*v*(float)i/SR);
         //g = 2*PI*(440* t + 440*t*t/ ((float) end/SR *2));
         for (int j = 1; j <= 3; j++) {
             samp += ((float) 0.001/j) * sinf(j*g + j*0.1);

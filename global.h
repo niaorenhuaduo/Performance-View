@@ -132,6 +132,7 @@ extern init_cos_window();
 extern init_cos_window2();
 extern float princarg(float phasein);
 extern unsigned char *synth_pitch;
+extern float *cumsum_freq;
 extern int play_synthesis;
 extern int test_audio_wave;
 extern int last_analyzed_frame;
