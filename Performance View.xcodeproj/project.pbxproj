@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1867FB871D1B160300F134BC /* Yin.c in Sources */ = {isa = PBXBuildFile; fileRef = 1867FB851D1B160300F134BC /* Yin.c */; };
 		8E0576B51C0A3DC4008097E9 /* InstBrowser.m in Sources */ = {isa = PBXBuildFile; fileRef = 8E0576B41C0A3DC4008097E9 /* InstBrowser.m */; };
 		8E29A1C71C0A0949008E6871 /* audio.c in Sources */ = {isa = PBXBuildFile; fileRef = 8E29A18F1C0A0949008E6871 /* audio.c */; };
 		8E29A1C81C0A0949008E6871 /* belief.c in Sources */ = {isa = PBXBuildFile; fileRef = 8E29A1901C0A0949008E6871 /* belief.c */; };
@@ -93,6 +94,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		1867FB851D1B160300F134BC /* Yin.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = Yin.c; sourceTree = "<group>"; };
+		1867FB861D1B160300F134BC /* Yin.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Yin.h; sourceTree = "<group>"; };
 		8E0576B31C0A3DC4008097E9 /* InstBrowser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = InstBrowser.h; sourceTree = "<group>"; };
 		8E0576B41C0A3DC4008097E9 /* InstBrowser.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = InstBrowser.m; sourceTree = "<group>"; };
 		8E083F051C0A10CC005543A1 /* linux.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = linux.h; sourceTree = "<group>"; };
@@ -317,6 +320,8 @@
 				8E29A1C61C0A0949008E6871 /* vocoder.c */,
 				8E40D9611C0A10F0006C6CA2 /* vocoder.h */,
 				8EFDC68D1C0A0BFA00B34FE2 /* wasapi.h */,
+				1867FB851D1B160300F134BC /* Yin.c */,
+				1867FB861D1B160300F134BC /* Yin.h */,
 			);
 			name = lowlevel;
 			sourceTree = "<group>";
@@ -593,6 +598,7 @@
 				8E66AA841C0A21220061FF20 /* midi.c in Sources */,
 				8E29A1CB1C0A0949008E6871 /* class.c in Sources */,
 				8EF1234E1C0A36C900787AAD /* PlayerWindow.m in Sources */,
+				1867FB871D1B160300F134BC /* Yin.c in Sources */,
 				8EF0A8551C09FC26008FCA2C /* AppDelegate.m in Sources */,
 				8E29A1DB1C0A0949008E6871 /* like.c in Sources */,
 				8E29A1F21C0A0949008E6871 /* vocoder.c in Sources */,

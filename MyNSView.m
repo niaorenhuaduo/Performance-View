@@ -19,6 +19,8 @@
 //#include "PatControl.h"
 #include <dirent.h>
 #include "audio.h"
+#include "yin.h"
+#include "dp.h"
 
 
 #define ON_SOLO 0
@@ -470,45 +472,39 @@ add_line_to_visible_pitch(int column, int endpos, int color, int freq, int *beg)
     
 }
 
-int calc_inst_freq_bin(int pos, int bin) {
+int calc_inst_freq_bin_yin(int pos, int bin) {
     
-    float binf = (float) bin/2; //bin value on spectrogram is 2*the actual value
+    int buffer_length = 300;
     int offset, inc;
     unsigned char *ptr1;
-    unsigned char *ptr2;
-    float inst_bin, tp1[FRAMELEN], tp2[FRAMELEN], ph1, ph2, omega, ph_inc, i1, i2, r1, r2, c; //FREQDIM is 1024
-    
-    inc = 20; //number of samples between first and second frames for phase-based pitch calculation
+    float inst_bin, hz_hat, tp1[FRAMELEN];
+    int16_t yin_audio[FRAMELEN];
     offset = pos*SKIPLEN*BYTES_PER_SAMPLE;
     ptr1 = audiodata + offset;
-    ptr2 = ptr1 + inc*2; //advance by 2 unsigned char per sample in audiodata
-    samples2floats(ptr1, tp1, FRAMELEN);
-    samples2floats(ptr2, tp2, FRAMELEN);
-    i1 = i2 = r1 = r2 = 0; //calculate fft for this bin for the chunks starting at ptr1 and ptr2
-    c = 2*PI*binf/freqs;
-    for (int j=0; j<freqs; j++) {
-        i1 -= tp1[j] * sinf(c * j) * coswindow[j];
-        i2 -= tp2[j] * sinf(c * j) * coswindow[j];
-        r1 += tp1[j] * cosf(c * j) * coswindow[j];
-        r2 += tp2[j] * cosf(c * j) * coswindow[j];
+    hz_hat = omega2hz(bin);
+    for (int i = 0; i < 1000; i = i+2) {
+        int16_t temp = (int16_t) ptr1 + i;
     }
-    omega = 2 * PI * binf * (float) inc / FRAMELEN; //expected number of cycles per increment
+    Yin yin;
+    float pitch;
     
-    ph1 = atan2f(i1, r1); //get phase increment
-    ph2 = atan2f(i2, r2);
-    float phtemp = princarg(ph2 - ph1 - omega);
-    //printf("\n phase incr new = %f", phtemp);
-    ph_inc = omega + princarg(ph2 - ph1 - omega); //add increment between -pi and +pi
-    inst_freq[pos] = ph_inc * (float) SR / (2 * PI * inc); //actual instantaneous frequency
+    //printf("About to test how many samples are needed to detect the pitch in a given signal\n");
+    //printf("WARNING: this test has an absolute disregard for memory managment, hang tight this could hurt a little...\n");
     
-    float tempp = inst_freq[pos];
-    //printf("\n inst pitch = %f", tempp);
+    //while (pitch < 10 ) {
+    Yin_init(&yin, FRAMELEN, 0.5);
+    pitch = Yin_getPitch(&yin, ptr1, hz_hat);
+    buffer_length++;
+    //}
     
+    printf("Pitch is found to be %f with buffer length %i and probability %f\n",pitch, buffer_length, Yin_getProbability(&yin) );
+    inst_freq[pos] = pitch; //actual instantaneous frequency
+
     inst_bin = hz2omega(inst_freq[pos]);
     return (int) inst_bin;
 }
 
-int calc_inst_freq_bin4(int pos, int bin) {
+int calc_inst_freq_bin(int pos, int bin) {
     
     float binf = (float) bin/2; //bin value on spectrogram is 2*the actual value
     int offset, inc;
@@ -525,10 +521,10 @@ int calc_inst_freq_bin4(int pos, int bin) {
     i1 = i2 = r1 = r2 = 0; //calculate fft for this bin for the chunks starting at ptr1 and ptr2
     c = 2*PI*binf*ratio / FRAMELEN_PITCH;
     for (int j=0; j<FRAMELEN_PITCH; j++) {
-        i1 -= tp1[j] * sinf(c * j) * coswindow[j];
-        i2 -= tp2[j] * sinf(c * j) * coswindow[j];
-        r1 += tp1[j] * cosf(c * j) * coswindow[j];
-        r2 += tp2[j] * cosf(c * j) * coswindow[j];
+        i1 -= tp1[j] * sinf(c * j) * coswindow2[j]; //there seem to be fewer gross errors when using coswindow (wrong window size)
+        i2 -= tp2[j] * sinf(c * j) * coswindow2[j];
+        r1 += tp1[j] * cosf(c * j) * coswindow2[j];
+        r2 += tp2[j] * cosf(c * j) * coswindow2[j];
     }
     omega = 2 * PI * binf * (float) inc * ratio / FRAMELEN_PITCH; //expected number of cycles per increment
     
@@ -545,91 +541,6 @@ int calc_inst_freq_bin4(int pos, int bin) {
     inst_bin = hz2omega(inst_freq[pos]);
     return (int) inst_bin;
 }
-
-
-//user shorter frame length in the analysis
-int calc_inst_freq_bin2(int pos, int bin) {
-    float binf = (float) bin/2; //bin value on spectrogram is 2*the actual value
-    binf = binf * (float) FRAMELEN_PITCH / FRAMELEN;
-    int offset, inc;
-    unsigned char *ptr1;
-    unsigned char *ptr2;
-    float inst_bin, tp1[FRAMELEN_PITCH], tp2[FRAMELEN_PITCH], ph1, ph2, omega, ph_inc, i1, i2, r1, r2, c; //FREQDIM is 1024
-    
-    inc = 20; //number of samples between first and second frames for phase-based pitch calculation
-    offset = pos*SKIPLEN*BYTES_PER_SAMPLE;
-    ptr1 = audiodata + offset;
-    ptr2 = ptr1 + inc*2; //advance by 2 unsigned char per sample in audiodata
-    samples2floats(ptr1, tp1, FRAMELEN_PITCH);
-    samples2floats(ptr2, tp2, FRAMELEN_PITCH);
-    i1 = i2 = r1 = r2 = 0; //calculate fft for this bin for the chunks starting at ptr1 and ptr2
-    c = 2*PI*binf/FRAMELEN_PITCH;
-    for (int j=0; j<FRAMELEN_PITCH; j++) {
-        i1 -= tp1[j] * sinf(c * j) * coswindow2[j];
-        i2 -= tp2[j] * sinf(c * j) * coswindow2[j];
-        r1 += tp1[j] * cosf(c * j) * coswindow2[j];
-        r2 += tp2[j] * cosf(c * j) * coswindow2[j];
-    }
-    omega = 2 * PI * binf * (float) inc / FRAMELEN_PITCH; //expected number of cycles per increment
-    
-    ph1 = atan2f(i1, r1); //get phase increment
-    ph2 = atan2f(i2, r2);
-    float phtemp = princarg(ph2 - ph1 - omega);
-    //printf("\n phase incr new = %f", phtemp);
-    ph_inc = omega + princarg(ph2 - ph1 - omega); //add increment between -pi and +pi
-    inst_freq[pos] = ph_inc * (float) SR / (2 * PI * inc); //actual instantaneous frequency
-    
-    float tempp = inst_freq[pos];
-    //printf("\n inst pitch = %f", tempp);
-    
-    inst_bin = hz2omega(inst_freq[pos]);
-    return (int) inst_bin;
-}
-
-
-//increase frame resolution by calculating pitch values in-between spectrogram frames
-int calc_inst_freq_bin3(int pos, int bin) {
-    float binf = (float) bin/2; //bin value on spectrogram is 2*the actual value
-    binf = binf * (float) FRAMELEN_PITCH / FRAMELEN;
-    int offset, inc, indx;
-    unsigned char *ptr1;
-    unsigned char *ptr2;
-    float inst_bin, tp1[FRAMELEN_PITCH], tp2[FRAMELEN_PITCH], ph1, ph2, omega, ph_inc, i1, i2, r1, r2, c; //FREQDIM is 1024
-    
-    inc = 20; //number of samples between first and second frames for phase-based pitch calculation
-    indx = pos + (pos - score.solo.note[1].frames) * (frame_resolution - 1); //index for inst_freq array which stores frame_resolution values per frame
-    for (int i = pos; i < pos + frame_resolution; i++) {
-        
-        offset = pos * SKIPLEN * BYTES_PER_SAMPLE + (i-pos) * BYTES_PER_SAMPLE * (float) SKIPLEN / frame_resolution;
-        ptr1 = audiodata + offset;
-        ptr2 = ptr1 + inc*2; //advance by 2 unsigned char per sample in audiodata
-        samples2floats(ptr1, tp1, FRAMELEN_PITCH);
-        samples2floats(ptr2, tp2, FRAMELEN_PITCH);
-        i1 = i2 = r1 = r2 = 0; //calculate fft for this bin for the chunks starting at ptr1 and ptr2
-        c = 2*PI*binf/FRAMELEN_PITCH;
-        for (int j=0; j<FRAMELEN_PITCH; j++) {
-            i1 -= tp1[j] * sinf(c * j) * coswindow2[j];
-            i2 -= tp2[j] * sinf(c * j) * coswindow2[j];
-            r1 += tp1[j] * cosf(c * j) * coswindow2[j];
-            r2 += tp2[j] * cosf(c * j) * coswindow2[j];
-        }
-        omega = 2 * PI * binf * (float) inc / FRAMELEN_PITCH; //expected number of cycles per increment
-        
-        ph1 = atan2f(i1, r1); //get phase increment
-        ph2 = atan2f(i2, r2);
-        float phtemp = princarg(ph2 - ph1 - omega);
-        //printf("\n phase incr new = %f", phtemp);
-        ph_inc = omega + princarg(ph2 - ph1 - omega); //add increment between -pi and +pi
-        inst_freq[indx + i - pos] = ph_inc * (float) SR / (2 * PI * inc); //actual instantaneous frequency
-    }
-    
-    float tempp = inst_freq[pos];
-    //printf("\n inst pitch = %f", tempp);
-    
-    inst_bin = hz2omega(inst_freq[indx]);
-    return (int) inst_bin;
-}
-
 
 void calc_max_bin(int startpos, int endpos, int fbin) {
     int max_bin, m, bin, k_min, k_max, width;
@@ -650,19 +561,17 @@ void calc_max_bin(int startpos, int endpos, int fbin) {
         for (int i = k_min; i < k_max; i++) {
             
             //printf("\t%d", (int) spect_page.ptr[j-scroll_pos][SPECT_HT-i]);
-            if (spect_page.ptr[j-scroll_pos][SPECT_HT-i] > m) {
+            if (spect_page.ptr[j-scroll_pos][SPECT_HT-i] > m) { //???
                 m = spect_page.ptr[j-scroll_pos][SPECT_HT-i];
                 max_bin = i;
             }
             inst_fbin[j] = max_bin;
         }
-        
     }
     for (int j = startpos; j < endpos; j++) {
-        inst_fbin[j] = calc_inst_freq_bin4(j, inst_fbin[j]); //calculate instantaneous pitch using selected bin
-        //inst_fbin[j] = calc_inst_freq_bin3(j, inst_fbin[j]); //increased resolution
+        inst_fbin[j] = calc_inst_freq_bin_yin(j, inst_fbin[j]); //calculate instantaneous pitch using selected bin
+        //inst_fbin[j] = calc_inst_freq_bin(j, inst_fbin[j]); //calculate instantaneous pitch using selected bin
     }
-    
 }
 
 
@@ -784,35 +693,15 @@ void calculate_amplitude(startframe, endframe) {
     int offset;
     float amp;
     for (int j = startframe; j < endframe; j++) {
-        offset =  max(( (j+1)*SKIPLEN - FRAMELEN)*BYTES_PER_SAMPLE,0); //won't this be one skiplen too far back?
+        offset = j*SKIPLEN*BYTES_PER_SAMPLE;
         temp =  audiodata + offset;
         samples2floats(temp, data, FRAMELEN);
         inst_amp[j] = 0;
         for (int i = 0; i < FRAMELEN; i++) { //sum of squares
             inst_amp[j] += data[i]*data[i];
         }
-    }
-    FILE *fp;
-    fp = fopen("/Users/apple/Documents/Performance-View/user/audio/inst_amp", "w");
-    fwrite(inst_amp, sizeof(float), 4500, fp);
-    fclose(fp);
-}
-
-void calculate_amplitude2(startframe, endframe) { //delete this one: it takes the max value
-    unsigned char *temp;
-    int offset;
-    float max_amp;
-    for (int j = startframe; j < endframe; j++) {
-        offset =  max(( (j+1)*SKIPLEN - FRAMELEN)*BYTES_PER_SAMPLE,0); //won't this be one skiplen too far back?
-        temp =  audiodata + offset;
-        samples2floats(temp, data, FRAMELEN);
-        max_amp = -1;
-        for (int i = 0; i < FRAMELEN; i++) {
-            if (data[i] > max_amp) {
-                max_amp = data[i];
-            }
-        }
-        inst_amp[j] = max_amp;
+        inst_amp[j]/=FRAMELEN;
+        inst_amp[j] = sqrtf(inst_amp[j]);
     }
     FILE *fp;
     fp = fopen("/Users/apple/Documents/Performance-View/user/audio/inst_amp", "w");
