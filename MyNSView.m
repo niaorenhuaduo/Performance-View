@@ -474,14 +474,14 @@ add_line_to_visible_pitch(int column, int endpos, int color, int freq, int *beg)
 
 int calc_inst_freq_bin_yin(int pos, int bin) {
     
-    int buffer_length = 300;
-    int offset, inc;
+    int offset, inc, buffer_length;
     unsigned char *ptr1;
     float inst_bin, hz_hat, tp1[FRAMELEN];
     int16_t yin_audio[FRAMELEN];
     offset = pos*SKIPLEN*BYTES_PER_SAMPLE;
     ptr1 = audiodata + offset;
     hz_hat = omega2hz(bin);
+    buffer_length = 5*((float) SAMPLE_SR/hz_hat);
     for (int i = 0; i < 1000; i = i+2) {
         int16_t temp = (int16_t) ptr1 + i;
     }
@@ -492,7 +492,7 @@ int calc_inst_freq_bin_yin(int pos, int bin) {
     //printf("WARNING: this test has an absolute disregard for memory managment, hang tight this could hurt a little...\n");
     
     //while (pitch < 10 ) {
-    Yin_init(&yin, FRAMELEN, 0.5);
+    Yin_init(&yin, buffer_length, 0.6);
     pitch = Yin_getPitch(&yin, ptr1, hz_hat);
     buffer_length++;
     //}
