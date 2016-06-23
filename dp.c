@@ -202,6 +202,11 @@ hz2omega(float hz) {
   return(FREQDIM*hz/(float) SR);
 }
 
+float
+omega2hz(int omega) {
+    return(omega*SR/(float) FREQDIM);
+}
+
 //CF:  Baum-Welch inference is done using an active hypothesis list called 'active'.
 //CF:  (NB hypotheses are called 'NODEs', not to be confused with state graph GNODEs.)
 //CF:  We need a free/alloc system to manage this active list.

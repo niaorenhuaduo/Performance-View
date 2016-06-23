@@ -38,6 +38,7 @@ void good_example();
 void  review_parse();
 void read_orchestra_audio();
 float hz2omega(float hz);
+float omega2hz(int omega);
 void get_rgb_spect(unsigned char **rgb, int *rows, int *cols);
 int read_parse_arg(char *file);
 void prepare_live(int m);

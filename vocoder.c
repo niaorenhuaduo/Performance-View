@@ -1710,7 +1710,6 @@ old_vcode_interp(float f, VCODE_ELEM *v) { /* f is pos in VCODE frames */
 
 
 
-
   /*  for (j=0; j < VOC_TOKEN_LEN; j++, temp+= BYTES_PER_SAMPLE) 
       sound1[j] = voc_window[j]*sample2float(temp);*/
   
@@ -2086,7 +2085,7 @@ resample_floats(float *b, float *r, int n, int m, float prate) {
 
 
 static void
-complex_spectrum(float *x, VCODE_ELEM *v) { 
+complex_spectrum(float *x, VCODE_ELEM *v) {
   float sound[VOC_TOKEN_LEN];
   float mod,phi,div_const,prate;
   int j;
