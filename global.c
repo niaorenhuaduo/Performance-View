@@ -16,6 +16,7 @@ char full_score_name[500]; /* path and filename of score name without suffix  */
 char score_dir[500];
 int mode;     /* real-time or training */
 int frames=0;   /* total number of frames */
+int frames_target = 0;  /* total number of frames in target audio*/
 int accomp_on_speakers=1;  /* the default */
 EVENT_LIST   event;
 EVENT_LIST   sevent;  /* for polyphonic solo */
@@ -48,6 +49,7 @@ float orchestra_spect[FREQDIM/2];
 float unscaled_orchestra_spect[FREQDIM/2];
 float *orch_data_frame;   /* one frame of orchestra data */
 unsigned char *audiodata;
+unsigned char *audiodata_target;
 float inst_freq[5000];
 int inst_fbin[5000];
 float inst_amp[5000];

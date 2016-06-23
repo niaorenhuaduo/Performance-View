@@ -64,6 +64,8 @@ alloc_audio_buff() {
     
     audiodata = (unsigned char*) malloc(MAXAUDIO);
     if (audiodata == NULL) printf("couldn't allocate audio data buffer\n");
+    audiodata_target = (unsigned char*) malloc(MAXAUDIO);
+    if (audiodata_target == NULL) printf("couldn't allocate audio data buffer\n");
     synth_pitch = (unsigned char*) malloc(MAX_SAMPLE*2);
     if (synth_pitch == NULL) printf("couldn't allocate synth pitch buffer\n");
     cumsum_freq = (float*) malloc(MAX_SAMPLE);

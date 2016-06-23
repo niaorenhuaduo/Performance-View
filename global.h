@@ -16,6 +16,7 @@ extern char full_score_name[]; /* path and filename of score name without suffix
 extern char score_dir[];
 extern int mode;     /* real-time etc. */
 extern int frames;   /* number of frames in total sample */
+extern int frames_target;
 extern int accomp_on_speakers;
 extern EVENT_LIST event;
 extern EVENT_LIST   sevent;  /* for polyphonic solo */
@@ -67,6 +68,7 @@ extern float orchestra_spect[];
 extern float unscaled_orchestra_spect[];
 extern float *orch_data_frame;
 extern unsigned char *audiodata;
+extern unsigned char *audiodata_target;
 extern char scoretag[];
 extern TEMPO_LIST tempo_list;
 extern int stop_playing_flag;
