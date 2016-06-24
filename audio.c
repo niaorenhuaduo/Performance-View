@@ -94,6 +94,17 @@ floats2samples(float *buff, unsigned char *audio, int n) {
 }
 
 void
+floats2samplesvar(float *buff, unsigned char *audio, int n) {
+    int i;
+    
+    for (i=0; i < n; i++){
+          float cur = sample2float(audio + i*BYTES_PER_SAMPLE);
+          float2sample(buff[i] + cur,audio+i*BYTES_PER_SAMPLE);
+      }
+}
+
+
+void
 samples2data() {
     unsigned char *temp, b[BYTES_PER_SAMPLE];
     int i,tot,j,offset;
@@ -196,9 +207,6 @@ read_target_audio() {
     unsigned ilen;
     FILE *fp;
     
-    
-    token = -1;
-    
     fp = fopen("/Users/Hipapa/Projects/Audio_Data/mozart_voi_che_sapete.005.raw","rb");
     if (fp == NULL) printf("couldn't open %s\n",audio_file);
     
@@ -258,6 +266,8 @@ readaudio() {
      close(fd);*/
     frames = b/(SKIPLEN*BYTES_PER_SAMPLE);
     printf("%d frames read\n",frames);
+    
+    //read_target_audio();
     return(frames);
 }
 

@@ -864,10 +864,21 @@ typedef struct {
     RATIONAL inc[INC_NUMS];
 } INC_VALS;
 
+#define MAX_FREQ_LEN 512
+typedef struct {
+    float modulus[MAX_FREQ_LEN];
+    float del_phase[MAX_FREQ_LEN];
+    float abs_phase[MAX_FREQ_LEN];
+    int num;
+} PHASE_VOCODER_EL;
+
+typedef struct {
+    PHASE_VOCODER_EL *el;
+    int num;
+    int max;
+} PHASE_VOCODER_LIST;
 
 #endif
-
-
  
 
 

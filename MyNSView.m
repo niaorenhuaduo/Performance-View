@@ -198,8 +198,50 @@ void resynth_solo(int sr) { //use cumsum instead of concatenating sine waves
     fp = fopen(stump, "wb");
     fwrite(synth_pitch,MAX_SAMPLE,BYTES_PER_SAMPLE, fp);
     fclose(fp);
+    play_synthesis = 0;
+}
+
+void resynth_solo_phase_vocoder() {
+    char stump[500];
+    
+    
+    float temp[FREQDIM],m,x,tp[FRAMELEN], tp2[FRAMELEN];
+    int i,t,offset;
+    unsigned char *ptr, *ptr2;
+
+    PHASE_VOCODER_LIST pv_list;
+    pv_list.num = 0;
+    pv_list.el = malloc(frames * sizeof(PHASE_VOCODER_EL));
+    for (token=0; token < frames; token++) {
+        t = (token > 0) ? token : 1;
+        offset = max(0,(t*SKIPLEN - FRAMELEN)*BYTES_PER_SAMPLE);   // should this be t+1 like in samples2data?
+        //    ptr =  audiodata + (t*SKIPLEN - FRAMELEN)*BYTES_PER_SAMPLE;  /* last spect */
+        ptr =  audiodata + offset;
+        samples2floats(ptr, tp, FRAMELEN);
+        pv_list.el[token].num = freqs;
+        create_spect_vocoder(tp,&pv_list.el[token]);
+    }
+    diff_phase(pv_list);
+    cum_phase(pv_list);
+
+    memset(audiodata_target, 0, sizeof(audiodata_target));
+    for (token =0; token < frames; token++){
+        t = (token > 0) ? token : 1;
+        offset = max(0,(t*SKIPLEN - FRAMELEN)*BYTES_PER_SAMPLE);   // should this be t+1 like in samples2data?
+        ptr =  audiodata_target + offset;
+        reconstruct_data_from_spect(tp, &pv_list.el[token]);
+        floats2samplesvar(tp, ptr, FRAMELEN);
+    }
+    
+    FILE *fp;
+    strcpy(stump,audio_data_dir);
+    strcat(stump, "synth_phase_vocoder");
+    fp = fopen(stump, "wb");
+    fwrite(audiodata_target,MAX_SAMPLE,BYTES_PER_SAMPLE, fp);
+    fclose(fp);
     play_synthesis = 1;
 }
+
 
 
 static int

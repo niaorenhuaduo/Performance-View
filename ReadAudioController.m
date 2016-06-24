@@ -262,7 +262,8 @@ display_range_string() {
     [_NewReadAudioWindow close];
     [view_self displaySpect];
     
-    resynth_solo(48000);
+    //resynth_solo(48000);
+    resynth_solo_phase_vocoder();
     display_range_string();
     display_take_string();
     

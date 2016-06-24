@@ -13,7 +13,7 @@
 
 
 
-
+#include "share.h"
 #include "share.c"
 #include "global.h"
 #include "four1.c"
@@ -473,6 +473,73 @@ create_spect(float *d, float *s) {  /* data has FRAMELEN pts */
     
 }
 
+void
+create_spect_vocoder(float *d,  PHASE_VOCODER_EL *p) {  /* data has FRAMELEN pts */
+    float temp[FREQDIM],m,x,scale,t;
+    int i;
+    
+    
+    for (i=0; i < FRAMELEN; i++) temp[i] = d[i];
+    for (i=FRAMELEN; i < FREQDIM; i++) temp[i] = 0;
+    for (i=0; i < FRAMELEN; i++)  temp[i] *= window[i];
+    
+    realft(temp-1,freqs,1);
+    p->modulus[0] = temp[0];
+    for (i=1; i < freqs; i++) p->modulus[i] = sqrtf((square(temp[2*i]) + square(temp[2*i+1]))); //temp fft stored as re - im - re - im ...
+    
+    p->abs_phase[0] = 0;
+    for (i=1; i < freqs; i++) p->abs_phase[i] = atan2f(temp[2*i+1], temp[2*i]); //temp fft stored as re - im - re - im ...
+    
+}
+
+void diff_phase(PHASE_VOCODER_LIST pv_list){
+
+      if(pv_list.num == 0) return;
+      
+      for(int i = 0; i < pv_list.el[0].num; i++){
+            pv_list.el[0].del_phase[i] = 0;
+      }
+
+      for(int i = 1; i < pv_list.num; i++){
+            PHASE_VOCODER_EL el = pv_list.el[i];
+            for(int j = 0; j < pv_list.el[i].num; j++){
+                  pv_list.el[i].del_phase[j] = pv_list.el[i].abs_phase[j] - pv_list.el[i-1].abs_phase[j];
+                  if(pv_list.el[i].del_phase[j] < -PI) pv_list.el[i].del_phase[j] += 2*PI;
+            }
+      }
+}
+
+void cum_phase(PHASE_VOCODER_LIST pv_list){
+
+      if(pv_list.num == 0) return;
+      
+      for(int i = 0; i < pv_list.el[0].num; i++){
+            pv_list.el[0].abs_phase[i] = 0;
+      }
+
+      for(int i = 1; i < pv_list.num; i++){
+            PHASE_VOCODER_EL el = pv_list.el[i];
+            for(int j = 0; j < pv_list.el[i].num; j++){
+                  pv_list.el[i].abs_phase[j] = pv_list.el[i-1].abs_phase[j] + pv_list.el[i].del_phase[j];
+            }
+      }
+}
+
+void reconstruct_data_from_spect(float *d,  PHASE_VOCODER_EL *p){
+    float temp[FREQDIM],m,x,scale,t;
+    int i;
+    
+    temp[0] = p->modulus[0];
+    for (i=1; i < freqs; i++){
+        temp[2*i] = p->modulus[i]*cosf(p->abs_phase[i]);
+        temp[2*i+1] = p->modulus[i]*sinf(p->abs_phase[i]);
+    }
+    
+    realft(temp-1,freqs,0);
+
+    for (i=0; i < FRAMELEN; i++) d[i] = temp[i];
+    for (i=0; i < FRAMELEN; i++)  temp[i] *= window[i];
+}
 
 
 extern unsigned char *audiodata;
