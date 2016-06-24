@@ -4898,13 +4898,14 @@ read_midi_solo_transpose(char *sname, int transp) {
         }
         else {
             fscanf(fp,"%s %d/%d %x %d %d",tag,&r.num,&r.den,&command,&pitch,&vel);
-            
-            pitch += transp;
-            fprintf(fp2,"%s %d/%d %x %d %d",tag,&r.num,&r.den,&command,&pitch,&vel);
         }
         
         //        if (pitch == 78) printf("vel = %d r = %d/%d\n",vel,r.num,r.den);
         if (feof(fp)) break;
+        
+        pitch += transp;
+        fprintf(fp2,"%s\t%d/%d\t%x\t%d\t%d\n",tag,r.num,r.den,command,pitch,vel);
+        
         meas = r.num/ (float) r.den;
         //    if (command != 0x92) { printf("command = %x\n",command); exit(0); }
         add_solo_event(MIDI_COM, /*NOTE_ON*/command, pitch, meas, vel, r,trill);
@@ -6156,7 +6157,7 @@ read_midi_score_input(char *name) {
 
   //  get_nick_info(name);
   if (read_midi_solo(name) == 0) return(0);
-    read_midi_solo_transpose(name, -12);
+    //read_midi_solo_transpose(name, -12); //comment this in to transpose midi pitches in file
   set_solo_events();   // this was after set_accom_events()  change 8-08
   calc_accom_beat();   // this was before read_midi_solo ... changed 8-08
 
