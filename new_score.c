@@ -4865,6 +4865,60 @@ read_nick_acc(char *sname) {
   //  thin_acc_events();
 }
 
+static int
+read_midi_solo_transpose(char *sname, int transp) {
+    char name[500],tag[500], new_name[500];
+    FILE *fp, *fp2;
+    int pitch,vel,i,command,trill=0,ticks;
+    RATIONAL r,rr;
+    float len,meas;
+    
+    
+    
+    strcpy(name,sname);
+    strcat(name,".solo");
+    fp = fopen(name,"r");
+    if (fp == 0) { printf("could open %s\n",name); return(0); }
+    
+    strcpy(new_name,sname);
+    strcat(new_name,".solo2");
+    fp2 = fopen(new_name,"w+");
+    if (fp2 == 0) { printf("could open %s\n",new_name); return(0); }
+    
+    r.num = 0; r.den = 1;
+    //  add_solo_event(MIDI_COM, NOTE_ON, 0,0.,100, r,0);
+    add_solo_event(MIDI_COM, NOTE_OFF, 0,0.,0, r,0);  /* kludge ...
+                                                       solo must have some chord taking place
+                                                       throughout entire composition.  this
+                                                       should be a "rest" when no notes
+                                                       sounding*/
+    for (i=0; i < MAX_EVENTS; i++) {
+        if (strcmp(scorename,"brahms_vc_mvmt1") == 0) {
+            fscanf(fp,"%s %d/%d %x %d %d %d %d",tag,&r.num,&r.den,&command,&pitch,&vel,&trill,&ticks);
+        }
+        else {
+            fscanf(fp,"%s %d/%d %x %d %d",tag,&r.num,&r.den,&command,&pitch,&vel);
+        }
+        
+        //        if (pitch == 78) printf("vel = %d r = %d/%d\n",vel,r.num,r.den);
+        if (feof(fp)) break;
+        
+        pitch += transp;
+        fprintf(fp2,"%s\t%d/%d\t%x\t%d\t%d\n",tag,r.num,r.den,command,pitch,vel);
+        
+        meas = r.num/ (float) r.den;
+        //    if (command != 0x92) { printf("command = %x\n",command); exit(0); }
+        add_solo_event(MIDI_COM, /*NOTE_ON*/command, pitch, meas, vel, r,trill);
+        //        printf("com = %d pitch = %d meas = %f vel = %d r = %d/%d\n",command,pitch,meas,vel,r.num,r.den);
+        
+    }
+    fclose(fp);
+    fclose(fp2);
+    return(1);
+    //      exit(0);
+}
+
+
 
 
 static int
@@ -6103,6 +6157,7 @@ read_midi_score_input(char *name) {
 
   //  get_nick_info(name);
   if (read_midi_solo(name) == 0) return(0);
+    //read_midi_solo_transpose(name, -12); //comment this in to transpose midi pitches in file
   set_solo_events();   // this was after set_accom_events()  change 8-08
   calc_accom_beat();   // this was before read_midi_solo ... changed 8-08
 

@@ -585,15 +585,10 @@ int calc_inst_freq_bin_yin(int pos, int bin) {
     }
     Yin yin;
     float pitch;
-    
-    //printf("About to test how many samples are needed to detect the pitch in a given signal\n");
-    //printf("WARNING: this test has an absolute disregard for memory managment, hang tight this could hurt a little...\n");
-    
-    //while (pitch < 10 ) {
+
     Yin_init(&yin, buffer_length, 0.6);
     pitch = Yin_getPitch(&yin, ptr1, hz_hat);
     buffer_length++;
-    //}
     
     printf("Pitch is found to be %f with buffer length %i and probability %f\n",pitch, buffer_length, Yin_getProbability(&yin) );
     inst_freq[pos] = pitch; //actual instantaneous frequency
