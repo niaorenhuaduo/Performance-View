@@ -504,7 +504,7 @@ void diff_phase(PHASE_VOCODER_LIST pv_list){
             PHASE_VOCODER_EL el = pv_list.el[i];
             for(int j = 0; j < pv_list.el[i].num; j++){
                   pv_list.el[i].del_phase[j] = pv_list.el[i].abs_phase[j] - pv_list.el[i-1].abs_phase[j];
-                  if(pv_list.el[i].del_phase[j] < -PI) pv_list.el[i].del_phase[j] += 2*PI;
+                  //if(pv_list.el[i].del_phase[j] < -PI) pv_list.el[i].del_phase[j] += 2*PI;
             }
       }
 }
@@ -513,9 +513,9 @@ void cum_phase(PHASE_VOCODER_LIST pv_list){
 
       if(pv_list.num == 0) return;
       
-      for(int i = 0; i < pv_list.el[0].num; i++){
-            pv_list.el[0].abs_phase[i] = 0;
-      }
+//      for(int i = 0; i < pv_list.el[0].num; i++){
+//            pv_list.el[0].abs_phase[i] = 0;
+//      }
 
       for(int i = 1; i < pv_list.num; i++){
             PHASE_VOCODER_EL el = pv_list.el[i];
@@ -537,7 +537,7 @@ void reconstruct_data_from_spect(float *d,  PHASE_VOCODER_EL *p){
     
     realft(temp-1,freqs,0);
 
-    for (i=0; i < FRAMELEN; i++) d[i] = temp[i];
+    for (i=0; i < FRAMELEN; i++) d[i] = temp[i] / FRAMELEN;
     for (i=0; i < FRAMELEN; i++)  temp[i] *= window[i];
 }
 

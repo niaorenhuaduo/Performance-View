@@ -201,9 +201,48 @@ void resynth_solo(int sr) { //use cumsum instead of concatenating sine waves
     play_synthesis = 0;
 }
 
+void save_audio_data(){
+    char fileName[200];
+    
+     strcpy(fileName, "/Users/Hipapa/Desktop/output.wav");
+
+    FILE *fp = fopen(fileName,"w");
+      WavHeader header;
+
+    header.chunk_id[0] = 'R';
+    header.chunk_id[1] = 'I';
+    header.chunk_id[2] = 'F';
+    header.chunk_id[3] = 'F';
+    header.chunk_size = 4 + (8 + 16) + (8 + (frames * BYTES_PER_FRAME / BYTES_PER_SAMPLE));
+    header.format[0] = 'W';
+    header.format[1] = 'A';
+    header.format[2] = 'V';
+    header.format[3] = 'E';
+    header.fmtchunk_id[0] = 'f';
+    header.fmtchunk_id[1] = 'm';
+    header.fmtchunk_id[2] = 't';
+    header.fmtchunk_id[3] = ' ';
+    header.fmtchunk_size = 16;
+    header.audio_format = 1;
+    header.num_channels = 1;
+    header.sample_rate = 8000;
+    header.byte_rate = (header.sample_rate * header.num_channels * 1);
+    header.block_align = 2;
+    header.bitspersample = 16;
+    header.datachunk_id[0] = 'd';
+    header.datachunk_id[1] = 'a';
+    header.datachunk_id[2] = 't';
+    header.datachunk_id[3] = 'a';
+    header.datachunk_size = frames * BYTES_PER_FRAME / BYTES_PER_SAMPLE;
+
+
+    fwrite(&header, 1, sizeof(WavHeader), fp);
+    fwrite(audiodata_target,1,header.datachunk_size,fp);
+    fclose(fp);
+}
+
 void resynth_solo_phase_vocoder() {
     char stump[500];
-    
     
     float temp[FREQDIM],m,x,tp[FRAMELEN], tp2[FRAMELEN];
     int i,t,offset;
@@ -233,12 +272,29 @@ void resynth_solo_phase_vocoder() {
         floats2samplesvar(tp, ptr, FRAMELEN);
     }
     
+    for (token =0; token < frames; token++){
+        t = (token > 0) ? token : 1;
+        offset = max(0,(t*SKIPLEN - FRAMELEN)*BYTES_PER_SAMPLE);   // should this be t+1 like in samples2data?
+        ptr =  audiodata + offset;
+        ptr2 =  audiodata_target + offset;
+        samples2floats(ptr, tp, FRAMELEN);
+        samples2floats(ptr2, tp2, FRAMELEN);
+        for(int ii = 0; ii < FRAMELEN; ii++){
+            float test1 = tp[ii];
+            float test2 = tp2[ii];
+            
+            if(test1 != 0)
+                  printf("hello %f", test1 - test2);
+        }
+    }
+    
     FILE *fp;
     strcpy(stump,audio_data_dir);
     strcat(stump, "synth_phase_vocoder");
     fp = fopen(stump, "wb");
     fwrite(audiodata_target,MAX_SAMPLE,BYTES_PER_SAMPLE, fp);
     fclose(fp);
+    save_audio_data();
     play_synthesis = 1;
 }
 
