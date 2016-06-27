@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		1867FB871D1B160300F134BC /* Yin.c in Sources */ = {isa = PBXBuildFile; fileRef = 1867FB851D1B160300F134BC /* Yin.c */; };
+		1867FB8A1D21991E00F134BC /* Resynthesis.c in Sources */ = {isa = PBXBuildFile; fileRef = 1867FB881D21991E00F134BC /* Resynthesis.c */; };
 		8E0576B51C0A3DC4008097E9 /* InstBrowser.m in Sources */ = {isa = PBXBuildFile; fileRef = 8E0576B41C0A3DC4008097E9 /* InstBrowser.m */; };
 		8E29A1C71C0A0949008E6871 /* audio.c in Sources */ = {isa = PBXBuildFile; fileRef = 8E29A18F1C0A0949008E6871 /* audio.c */; };
 		8E29A1C81C0A0949008E6871 /* belief.c in Sources */ = {isa = PBXBuildFile; fileRef = 8E29A1901C0A0949008E6871 /* belief.c */; };
@@ -96,6 +97,8 @@
 /* Begin PBXFileReference section */
 		1867FB851D1B160300F134BC /* Yin.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = Yin.c; sourceTree = "<group>"; };
 		1867FB861D1B160300F134BC /* Yin.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Yin.h; sourceTree = "<group>"; };
+		1867FB881D21991E00F134BC /* Resynthesis.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = Resynthesis.c; sourceTree = "<group>"; };
+		1867FB891D21991E00F134BC /* Resynthesis.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Resynthesis.h; sourceTree = "<group>"; };
 		8E0576B31C0A3DC4008097E9 /* InstBrowser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = InstBrowser.h; sourceTree = "<group>"; };
 		8E0576B41C0A3DC4008097E9 /* InstBrowser.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = InstBrowser.m; sourceTree = "<group>"; };
 		8E083F051C0A10CC005543A1 /* linux.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = linux.h; sourceTree = "<group>"; };
@@ -381,6 +384,8 @@
 				8E0576B71C0A4172008097E9 /* lowlevel */,
 				8E0576B61C0A4141008097E9 /* Setup */,
 				8EC2EA641C0A2210006EB0AD /* MyNSView.h */,
+				1867FB881D21991E00F134BC /* Resynthesis.c */,
+				1867FB891D21991E00F134BC /* Resynthesis.h */,
 				8EC2EA651C0A2210006EB0AD /* MyNSView.m */,
 				8E7E42D61C0A1A5200112F43 /* NameBrowser.h */,
 				8E7E42D71C0A1A5200112F43 /* NameBrowser.m */,
@@ -590,6 +595,7 @@
 				8ECBA9691C0A43F400BAE413 /* ChooseScoreController.m in Sources */,
 				8E29A1E21C0A0949008E6871 /* new_score.c in Sources */,
 				8E29A1EA1C0A0949008E6871 /* score.c in Sources */,
+				1867FB8A1D21991E00F134BC /* Resynthesis.c in Sources */,
 				8E29A1D51C0A0949008E6871 /* gammln.c in Sources */,
 				8ECCF8AF1C0B584E00DFA2DC /* PatControl.m in Sources */,
 				8E29A1CF1C0A0949008E6871 /* dp.c in Sources */,

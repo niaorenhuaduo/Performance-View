@@ -204,7 +204,7 @@ void resynth_solo(int sr) { //use cumsum instead of concatenating sine waves
 void save_audio_data(){
     char fileName[200];
     
-     strcpy(fileName, "/Users/Hipapa/Desktop/output.wav");
+     strcpy(fileName, "/Users/apple/Desktop/output.wav");
 
     FILE *fp = fopen(fileName,"w");
       WavHeader header;
@@ -795,7 +795,7 @@ void calculate_amplitude(startframe, endframe) {
         }
     }
     FILE *fp;
-    fp = fopen("/Users/Hipapa/Projects/Git/Performance-View/user/audio/inst_amp", "w");
+    fp = fopen("/Users/apple/Documents/Performance-View/user/audio/inst_amp", "w");
     fwrite(inst_amp, sizeof(float), 4500, fp);
     fclose(fp);
 }
@@ -817,7 +817,7 @@ void calculate_amplitude2(startframe, endframe) { //delete this one: it takes th
         inst_amp[j] = max_amp;
     }
     FILE *fp;
-    fp = fopen("/Users/Hipapa/Projects/Git/Performance-View/audio/inst_amp", "w");
+    fp = fopen("/Users/apple/Documents/Performance-View/user/audio/inst_amp", "w");
     fwrite(inst_amp, sizeof(float), 4500, fp);
     fclose(fp);
 }
