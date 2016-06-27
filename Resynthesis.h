@@ -9,11 +9,15 @@
 #ifndef Resynthesis_h
 #define Resynthesis_h
 
-#include <stdio.h>
-
-#endif /* Resynthesis_h */
-
 #include "yin.h"
 #include "share.h"
 #include "audio.h"
 #include "global.h"
+
+
+#include <stdio.h>
+
+void prep_cal_feature(int frame, unsigned char* audioname);
+
+#endif /* Resynthesis_h */
+

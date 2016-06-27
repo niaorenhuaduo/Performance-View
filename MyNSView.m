@@ -21,6 +21,7 @@
 #include "audio.h"
 #include "yin.h"
 #include "dp.h"
+#include "Resynthesis.h"
 
 
 #define ON_SOLO 0
@@ -242,6 +243,8 @@ void save_audio_data(){
 }
 
 void resynth_solo_phase_vocoder() {
+    //temporarily add test here:
+    prep_cal_feature(560, audiodata);
     char stump[500];
     
     float temp[FREQDIM],m,x,tp[FRAMELEN], tp2[FRAMELEN];
