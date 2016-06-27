@@ -12,3 +12,8 @@
 #include <stdio.h>
 
 #endif /* Resynthesis_h */
+
+#include "yin.h"
+#include "share.h"
+#include "audio.h"
+#include "global.h"
