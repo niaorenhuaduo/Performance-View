@@ -21,6 +21,7 @@ float next_callback_seconds();
 void strip_start_playing_orchestra();
 void vocoder_test();
 int  vcode_init();
+void vcode_synth_frame_rate();
 void vcode_init_raw_audio();
 void start_playing_orchestra();
 void vcode_action();

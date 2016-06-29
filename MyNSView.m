@@ -21,6 +21,7 @@
 #include "audio.h"
 #include "yin.h"
 #include "dp.h"
+#include "vocoder.h"
 
 
 #define ON_SOLO 0
@@ -237,65 +238,79 @@ void save_audio_data(){
 
 
     fwrite(&header, 1, sizeof(WavHeader), fp);
-    fwrite(audiodata_target,1,header.datachunk_size,fp);
+    fwrite(audiodata,1,header.datachunk_size,fp);
     fclose(fp);
 }
 
 void resynth_solo_phase_vocoder() {
-    char stump[500];
-    
-    float temp[FREQDIM],m,x,tp[FRAMELEN], tp2[FRAMELEN];
-    int i,t,offset;
-    unsigned char *ptr, *ptr2;
-
-    PHASE_VOCODER_LIST pv_list;
-    pv_list.num = 0;
-    pv_list.el = malloc(frames * sizeof(PHASE_VOCODER_EL));
-    for (token=0; token < frames; token++) {
-        t = (token > 0) ? token : 1;
-        offset = max(0,(t*SKIPLEN - FRAMELEN)*BYTES_PER_SAMPLE);   // should this be t+1 like in samples2data?
-        //    ptr =  audiodata + (t*SKIPLEN - FRAMELEN)*BYTES_PER_SAMPLE;  /* last spect */
-        ptr =  audiodata + offset;
-        samples2floats(ptr, tp, FRAMELEN);
-        pv_list.el[token].num = freqs;
-        create_spect_vocoder(tp,&pv_list.el[token]);
-    }
-    diff_phase(pv_list);
-    cum_phase(pv_list);
-
-    memset(audiodata_target, 0, sizeof(audiodata_target));
-    for (token =0; token < frames; token++){
-        t = (token > 0) ? token : 1;
-        offset = max(0,(t*SKIPLEN - FRAMELEN)*BYTES_PER_SAMPLE);   // should this be t+1 like in samples2data?
-        ptr =  audiodata_target + offset;
-        reconstruct_data_from_spect(tp, &pv_list.el[token]);
-        floats2samplesvar(tp, ptr, FRAMELEN);
-    }
-    
-    for (token =0; token < frames; token++){
-        t = (token > 0) ? token : 1;
-        offset = max(0,(t*SKIPLEN - FRAMELEN)*BYTES_PER_SAMPLE);   // should this be t+1 like in samples2data?
-        ptr =  audiodata + offset;
-        ptr2 =  audiodata_target + offset;
-        samples2floats(ptr, tp, FRAMELEN);
-        samples2floats(ptr2, tp2, FRAMELEN);
-        for(int ii = 0; ii < FRAMELEN; ii++){
-            float test1 = tp[ii];
-            float test2 = tp2[ii];
-            
-            if(test1 != 0)
-                  printf("hello %f", test1 - test2);
-        }
-    }
-    
-    FILE *fp;
-    strcpy(stump,audio_data_dir);
-    strcat(stump, "synth_phase_vocoder");
-    fp = fopen(stump, "wb");
-    fwrite(audiodata_target,MAX_SAMPLE,BYTES_PER_SAMPLE, fp);
-    fclose(fp);
-    save_audio_data();
-    play_synthesis = 1;
+      //read_orchestra_audio_using_path();
+      //read_48khz_raw_audio_name("/Users/Hipapa/Projects/Git/Performance-View/user/audio/new/mozart_ach_ich_fuhls.raw");
+      vcode_init();
+      for(int i = 0; i < 500; i++){
+            vcode_synth_frame_rate();
+            set_vcode_rate(1 + (float)i/500);
+            }
+//    char stump[500];
+//    
+//    float temp[FREQDIM],m,x,tp[FRAMELEN], tp2[FRAMELEN];
+//    int i,t,offset;
+//    unsigned char *ptr, *ptr2;
+//
+//    PHASE_VOCODER_LIST pv_list;
+//    pv_list.num = 0;
+//    pv_list.el = malloc(frames * sizeof(PHASE_VOCODER_EL));
+//    for (token=0; token < frames; token++) {
+//        t = (token > 0) ? token : 1;
+//        offset = max(0,(t*SKIPLEN - FRAMELEN)*BYTES_PER_SAMPLE);   // should this be t+1 like in samples2data?
+//        //    ptr =  audiodata + (t*SKIPLEN - FRAMELEN)*BYTES_PER_SAMPLE;  /* last spect */
+//        ptr =  audiodata + offset;
+//        samples2floats(ptr, tp, FRAMELEN);
+//        pv_list.el[token].num = freqs;
+//        create_spect_vocoder(tp,&pv_list.el[token]);
+//    }
+//    //diff_phase(pv_list);
+//    //cum_phase(pv_list);
+//
+//    memset(audiodata_target, 0, sizeof(audiodata_target));
+//    for (token =0; token < frames; token++){
+//        t = (token > 0) ? token : 1;
+//        //offset = max(0,(t*SKIPLEN - FRAMELEN)*BYTES_PER_SAMPLE);   // should this be t+1 like in samples2data?
+//        
+//        int new_token = token;
+//        int new_t = (new_token > 0) ? new_token : 1;
+//        offset = max(0,(new_t*SKIPLEN - FRAMELEN)*BYTES_PER_SAMPLE);   // should this be t+1 like in samples2data?
+//        
+//        ptr =  audiodata_target + offset;
+//        reconstruct_data_from_spect(tp, &pv_list.el[token]);
+//        floats2samplesvar(tp, ptr, FRAMELEN);
+//    }
+//    
+//    for (token =0; token < frames; token++){
+//        t = (token > 0) ? token : 1;
+//        offset = max(0,(t*SKIPLEN - FRAMELEN)*BYTES_PER_SAMPLE);   // should this be t+1 like in samples2data?
+//        ptr =  audiodata + offset;
+//        
+//        
+//        ptr2 =  audiodata_target + offset;
+//        samples2floats(ptr, tp, FRAMELEN);
+//        samples2floats(ptr2, tp2, FRAMELEN);
+//        for(int ii = 0; ii < FRAMELEN; ii++){
+//            float test1 = tp[ii];
+//            float test2 = tp2[ii];
+//            
+//            if(test1 != 0)
+//                  printf("hello %f", test1 - test2);
+//        }
+//    }
+//    
+//    FILE *fp;
+//    strcpy(stump,audio_data_dir);
+//    strcat(stump, "synth_phase_vocoder");
+//    fp = fopen(stump, "wb");
+//    fwrite(audiodata_target,MAX_SAMPLE,BYTES_PER_SAMPLE, fp);
+//    fclose(fp);
+//    save_audio_data();
+//    play_synthesis = 1;
 }
 
 

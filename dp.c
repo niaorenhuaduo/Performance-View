@@ -3089,7 +3089,6 @@ read_orchestra_audio() {  /* assumes audio_file is set  (and frames too)*/
 }
 
 
-
 void
 make_current_examp(char *name, int n) {
   char num[50];

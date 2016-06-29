@@ -829,6 +829,7 @@ vcode_init() {
   vring.frame = 0;
   vring.cur_state.file_pos_secs = 0.;
   vring.rate = 1.;
+  vring.gain = 1.;
     stalled_out = 0;
   read_mmo_taps();
   init_vring_state();
@@ -2411,6 +2412,7 @@ flush_io_buff(CIRC_CHUNK_BUFF *buff) {
 
 void write_io_buff(CIRC_CHUNK_BUFF *buff, unsigned char *out) {
   int d;
+  
 
   d = fwrite(out,1,buff->size,buff->fp);
   if (d != buff->size) { 
@@ -2420,6 +2422,14 @@ void write_io_buff(CIRC_CHUNK_BUFF *buff, unsigned char *out) {
     return;
     //    exit(0); 
   }
+}
+
+void temp_write_new(int size, unsigned char *out) {
+  int d;
+  
+      FILE *fp = fopen("/Users/Hipapa/Projects/Git/Performance-View/user/audio/new/new.raw", "ab");
+      fwrite(out,1,size,fp);
+      fclose(fp);
 }
 
 void 
@@ -2488,7 +2498,7 @@ vcode_play_solo_audio_frame() {
 
 
 //CF:  guts.  Generate one new frame of vocoder output audio.
-static void
+void
 vcode_synth_frame_rate() {
   VCODE_ELEM new[VOC_TOKEN_LEN/2+1];
   int i,j,w;
@@ -2506,7 +2516,11 @@ vcode_synth_frame_rate() {
   //  printf("rate = %f\n",vring.rate);
 
   frame_secs = VOC_TOKEN_LEN/((float)(HOP*OUTPUT_SR));  /* secs per frame, constant */
-  vring.cur_state.file_pos_secs += vring.rate*frame_secs;    //CF:  tweak position in underlying audio file, in secs
+  //vring.cur_state.file_pos_secs += vring.rate*frame_secs;    //CF:  tweak position in underlying audio file, in secs
+  static frames = 0;
+  vring.cur_state.file_pos_secs = 10 - frames*frame_secs;
+  frames++;
+  
   f = vring.cur_state.file_pos_secs / frame_secs;  /* position in audio file in (float) frames (frames overlap by eg. 3/4) */ 
   //CF:  spec case when we hit the end of the audio file -- jump back 20 frames and repeat
   if (((int) f) >= vring.audio_frames-20) f = vring.audio_frames-20;
@@ -2539,13 +2553,13 @@ vcode_synth_frame_rate() {
 
 
   if (mode == LIVE_MODE) save_orch_data(out , HOP_LEN);  //CF:  save (downsampled) copy of out audio, for testing (no disk output)
-  if (mode != SIMULATE_MODE)  write_audio_channels(left,rite,HOP_LEN);  /* two channels */
+  //if (mode != SIMULATE_MODE)  write_audio_channels(left,rite,HOP_LEN);  /* two channels */
   vring.frame++;  /* these are overlapped frames */
   save_vcode_state();  /* nth state is state before  nth frame played */
 
   if (mode == LIVE_MODE) queue_io_buff(&orch_out,out);   
   if (mode == SIMULATE_MODE) write_io_buff(&orch_out,out);   // for oracle
-
+      temp_write_new(HOP_LEN*BYTES_PER_SAMPLE, out);
 }
 
 
@@ -4617,4 +4631,5 @@ void
 set_vcode_rate(float rate) {
   vring.rate = rate;
 }
+
 
