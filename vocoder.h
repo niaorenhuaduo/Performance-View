@@ -55,6 +55,9 @@ void init_orchestra();
 int have_orchestral_intro();
 void read_orchestra_shift();
 void write_orchestra_shift();
+void temp_rewrite_audio();
+void temp_append_audio();
+void cal_vcode_features(AUDIO_FEATURE_LIST *flist);
 
 //------------------------
 // might want to move these elsewhere along with the #include <stdio.h>

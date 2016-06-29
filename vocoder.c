@@ -26,7 +26,7 @@
 #include "matrix_util.h"
 #include "wasapi.h"
 #include "belief.h"
-
+#include "Resynthesis.h"
 
 
 //#define ORCH_PITCH  444  /* assuming that the orch recorded at a=440 */
@@ -2424,12 +2424,27 @@ void write_io_buff(CIRC_CHUNK_BUFF *buff, unsigned char *out) {
   }
 }
 
-void temp_write_new(int size, unsigned char *out) {
+void temp_rewrite_audio() {
+  int d;
+  //remove the content
+      FILE *fp = fopen("/Users/Hipapa/Projects/Git/Performance-View/user/audio/new/new.raw", "wb");
+      fclose(fp);
+}
+
+void temp_append_audio(int size, unsigned char *out) {
   int d;
   
       FILE *fp = fopen("/Users/Hipapa/Projects/Git/Performance-View/user/audio/new/new.raw", "ab");
       fwrite(out,1,size,fp);
       fclose(fp);
+}
+
+void cal_vcode_features(AUDIO_FEATURE_LIST *flist){
+      flist->num = 0;
+      if(flist->el == NULL) flist->el = malloc(vring.audio_frames * sizeof(AUDIO_FEATURE));
+      for(int i = 0; i < vring.audio_frames; i++){
+            //flist->el[i] = ;
+      }
 }
 
 void 
@@ -2516,10 +2531,7 @@ vcode_synth_frame_rate() {
   //  printf("rate = %f\n",vring.rate);
 
   frame_secs = VOC_TOKEN_LEN/((float)(HOP*OUTPUT_SR));  /* secs per frame, constant */
-  //vring.cur_state.file_pos_secs += vring.rate*frame_secs;    //CF:  tweak position in underlying audio file, in secs
-  static frames = 0;
-  vring.cur_state.file_pos_secs = 10 - frames*frame_secs;
-  frames++;
+  vring.cur_state.file_pos_secs += vring.rate*frame_secs;    //CF:  tweak position in underlying audio file, in secs
   
   f = vring.cur_state.file_pos_secs / frame_secs;  /* position in audio file in (float) frames (frames overlap by eg. 3/4) */ 
   //CF:  spec case when we hit the end of the audio file -- jump back 20 frames and repeat
@@ -2559,13 +2571,70 @@ vcode_synth_frame_rate() {
 
   if (mode == LIVE_MODE) queue_io_buff(&orch_out,out);   
   if (mode == SIMULATE_MODE) write_io_buff(&orch_out,out);   // for oracle
-      temp_write_new(HOP_LEN*BYTES_PER_SAMPLE, out);
 }
 
 
+void
+vcode_synth_frame_var(int cur_frame) {
+  VCODE_ELEM new[VOC_TOKEN_LEN/2+1];
+  int i,j,w;
+  float sound[VOC_TOKEN_LEN],f,frame_secs,fsolo[HOP_LEN],forch[HOP_LEN],t1,t2;
+  float left[HOP_LEN],rite[HOP_LEN];
+  unsigned char out[VOC_TOKEN_LEN*BYTES_PER_SAMPLE];
+  unsigned char interleaved[VOC_TOKEN_LEN*BYTES_PER_SAMPLE],solo[VOC_TOKEN_LEN*BYTES_PER_SAMPLE];
+  static FILE *fp;
+  
+  /*  printf("----------------pos is %f cur = %d desired time is %f now = %f\n",vring.cur_state.file_pos_secs,cur_accomp,score.midi.burst[cur_accomp].ideal_secs,next_frame_time());  */
+
+  /*    if (vring.cur_state.file_pos_secs > score.midi.burst[cur_accomp].orchestra_secs)
+      {   printf("----------------pos is %f cur = %d desired time is %f now = %f\n",vring.cur_state.file_pos_secs,cur_accomp,score.midi.burst[cur_accomp].ideal_secs,next_frame_time()); }
+  */
+  //  printf("rate = %f\n",vring.rate);
+
+  frame_secs = VOC_TOKEN_LEN/((float)(HOP*OUTPUT_SR));  /* secs per frame, constant */
+  vring.cur_state.file_pos_secs = cur_frame*frame_secs;
+  
+  f = vring.cur_state.file_pos_secs / frame_secs;  /* position in audio file in (float) frames (frames overlap by eg. 3/4) */
+    
+  //CF:  spec case when we hit the end of the audio file -- jump back 20 frames and repeat
+  if (((int) f) >= vring.audio_frames-20) f = vring.audio_frames-20;
+  /* 20 of course is right but 2 causes a seg fault.  might want to figure this out at some point */
+
+  if (vring.rate < .3)  pv_new_grain(f,sound);  /* straight phase vocoding */
+  else  phase_lock_new_grain(f,sound);  /* phase-locking phase vocoding */
+  //CF:  now we have one new grain.
+  //CF:  Each output frame is a weighted combination of the latest 4 (HOP) grains.
+  //CF:  We use a clever circular buffer structure to compute this efficiently...
+
+  //CF:  add the new grain into the circular buffer, with the appropriate offset
+  for (i=0, j = vring.frame*HOP_LEN; i < VOC_TOKEN_LEN; i++, j++) 
+    vring.cur_state.obuff[j%VOC_TOKEN_LEN] += vring.gain*voc_window[i]*sound[i];  
+  
+  //CF:  one of the frames of the circular buffer now contains the required output.  Write this to 'out'. 
+
+  for (i=0, j = (vring.frame%HOP)*HOP_LEN; i < HOP_LEN; i++,j++) {
+    forch[i] = vring.cur_state.obuff[j];
+    float2sample(vring.cur_state.obuff[j], out+i*BYTES_PER_SAMPLE);
+    vring.cur_state.obuff[j] = 0;   //CF:  zero out the frame of the circular buffer now we've finished with it.
+  }
+    if (mode == SYNTH_MODE) { //CF:  mode with pre-recorded solo part -- we want to hear the solo in the mix too.
+    if (hires_fp) get_hires_solo_audio_frame(solo);  // this will cause disc read block on the audio output callback ... okay for synth mode I guess
+    else  get_upsampled_solo_audio_frame(solo);
+    samples2floats(solo, fsolo, HOP_LEN);
+    float_mix(fsolo, forch,left,rite,HOP_LEN);
+  }
+  else  float_mix(forch, forch,left,rite,HOP_LEN);
 
 
+  if (mode == LIVE_MODE) save_orch_data(out , HOP_LEN);  //CF:  save (downsampled) copy of out audio, for testing (no disk output)
+  //if (mode != SIMULATE_MODE)  write_audio_channels(left,rite,HOP_LEN);  /* two channels */
+  vring.frame++;  /* these are overlapped frames */
+  save_vcode_state();  /* nth state is state before  nth frame played */
 
+  if (mode == LIVE_MODE) queue_io_buff(&orch_out,out);   
+  if (mode == SIMULATE_MODE) write_io_buff(&orch_out,out);   // for oracle
+      temp_write_audio(HOP_LEN*BYTES_PER_SAMPLE, out);
+}
 
 
 static void

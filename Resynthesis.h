@@ -17,6 +17,17 @@
 
 #include <stdio.h>
 
+typedef struct {
+    float hz;
+    float amp;
+    //add other features?
+} AUDIO_FEATURE;
+
+typedef struct {
+    AUDIO_FEATURE* el;
+    int num;
+} AUDIO_FEATURE_LIST;
+
 void prep_cal_feature(int frame, unsigned char* audioname);
 
 #endif /* Resynthesis_h */

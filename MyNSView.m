@@ -243,13 +243,33 @@ void save_audio_data(){
     fclose(fp);
 }
 
+static AUDIO_FEATURE_LIST saved_feature_list;
+
+static void read_saved_data_features(){
+      saved_feature_list.num = 0;
+      
+      //read and alloc
+}
+
+static int find_closest_frame_index(AUDIO_FEATURE f, AUDIO_FEATURE_LIST database){
+      int opt = 0;
+      for(int i = 0; i < database.num; i++){
+            return(opt);
+      
+      }
+
+}
+
 void resynth_solo_phase_vocoder() {
-      //read_orchestra_audio_using_path();
-      //read_48khz_raw_audio_name("/Users/Hipapa/Projects/Git/Performance-View/user/audio/new/mozart_ach_ich_fuhls.raw");
+      AUDIO_FEATURE_LIST database_feature_list;
+      cal_vcode_features(&database_feature_list);
+      
       vcode_init();
-      for(int i = 0; i < 500; i++){
-            vcode_synth_frame_rate();
-            set_vcode_rate(1 + (float)i/500);
+      temp_rewrite_audio();
+      for(int i = 0; i < saved_feature_list.num; i++){ //i is the frame index of test data
+            AUDIO_FEATURE frame_feature = saved_feature_list.el[i];
+            int j = find_closest_frame_index(frame_feature, database_feature_list);
+            vcode_synth_frame_var(j);
             }
 }
 
@@ -750,7 +770,7 @@ void calculate_amplitude(startframe, endframe) {
         }
     }
     FILE *fp;
-    fp = fopen("/Users/apple/Documents/Performance-View/user/audio/inst_amp", "w");
+    fp = fopen("/Users/Hipapa/Projects/Git/Performance-View/user/audio/inst_amp", "w");
     fwrite(inst_amp, sizeof(float), 4500, fp);
     fclose(fp);
 }

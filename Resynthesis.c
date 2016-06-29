@@ -10,13 +10,6 @@
 #include "global.h"
 
 
-typedef struct {
-    float hz;
-    float amp;
-    //add other features?
-} AUDIO_FEATURE;
-
-
 float cal_pitch_yin(unsigned char *ptr, float hz0) {
     int buffer_length;
     buffer_length = 5*((float) SAMPLE_SR/hz0);
