@@ -5795,7 +5795,32 @@ create_raw_from_48k() {
   fclose(fpl);
   fclose(fph);
   printf("wrote %s\n",audio_file);
-}  
+}
+
+void
+new_create_raw_from_48k(char *name) {
+  FILE *fpl,*fph;
+  char audio_file[500];
+  unsigned char buff[2*DOWN_CHUNK*6],obuff[2*DOWN_CHUNK];
+  
+  strcpy(audio_file,audio_data_dir);  
+  strcat(audio_file,current_examp);   
+  strcat(audio_file,".48k");
+  fph = fopen(audio_file,"rb"); 
+  if (fph == NULL) {printf("coulndn't\n"); exit(0); }
+
+  fpl = fopen(name,"wb");
+  
+  while (1) {
+    fread(buff,DOWN_CHUNK*6,2,fph);
+    if (feof(fph)) break;
+    downsample_audio(buff,obuff, 6*DOWN_CHUNK,6);
+    fwrite(obuff,DOWN_CHUNK,2,fpl);
+  }
+  fclose(fpl);
+  fclose(fph);
+  printf("wrote %s\n",audio_file);
+}
   
 
 int

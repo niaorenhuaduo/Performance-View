@@ -182,8 +182,6 @@ scoretag2title(char *tag, char *title) {
 
 
 
-
-
 int
 read_score_files() {
   char title[500],lab[500],score[500],audio[500],times[500],dir[500],tap[500];
@@ -253,9 +251,11 @@ read_score_files() {
     }
     else {
       strcpy(audio,score);
-      strcat(audio,".raw");
+      strcat(audio, "raw");
+      
       printf("reading 48Khz data %s\n",audio);
       if (read_48khz_raw_audio_name(audio) == 0) return(0);
+      
     }
   }
   strcpy(tap,score);

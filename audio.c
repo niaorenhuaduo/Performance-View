@@ -207,7 +207,7 @@ read_target_audio() {
     unsigned ilen;
     FILE *fp;
     
-    fp = fopen("/Users/apple/Documents/Performance-View/user/audio/sanna/mozart_voi_che_sapete/mozart_voi_che_sapete.005.raw","rb");
+    fp = fopen("/Users/Hipapa/Projects/Git/Performance-View/user/audio/sanna/mozart_voi_che_sapete/mozart_voi_che_sapete.005.raw","rb");
     if (fp == NULL) printf("couldn't open %s\n",audio_file);
     
     b = fread(audiodata_target,1,MAXAUDIO,fp);

@@ -211,6 +211,7 @@ float Yin_getPitch(Yin *yin, int16_t* buffer, int hz_hat){
         pitchInHertz = YIN_SAMPLING_RATE / Yin_parabolicInterpolation(yin, tauEstimate);
     }
     
+    
     return pitchInHertz;
 }
 

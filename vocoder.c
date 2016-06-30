@@ -2633,7 +2633,7 @@ vcode_synth_frame_var(int cur_frame) {
 
   if (mode == LIVE_MODE) queue_io_buff(&orch_out,out);   
   if (mode == SIMULATE_MODE) write_io_buff(&orch_out,out);   // for oracle
-      temp_write_audio(HOP_LEN*BYTES_PER_SAMPLE, out);
+      temp_append_audio(HOP_LEN*BYTES_PER_SAMPLE, out);
 }
 
 
@@ -4699,6 +4699,32 @@ exit(0);*/
 void
 set_vcode_rate(float rate) {
   vring.rate = rate;
+}
+
+void write_features(char *name) {
+    
+    FILE *fp;
+    fp = fopen(name, "w");
+    if (fp == NULL) { printf("can't open %s\n",name); return; }
+    
+    AUDIO_FEATURE af;
+    int start, end, s, e, midi, frame_8k, offset, frames;
+    float hz0, abs_time;
+    unsigned char *ptr;
+    frames = vring.audio_frames;
+    fprintf(fp, "Total number of frames: %d\n", frames);
+    for (int i = 0; i < frames; i++) {
+        frame_8k = i * HOP_LEN / (float) (SKIPLEN * 6);
+        midi = binary_search(firstnote, lastnote, frame_8k);
+        if (midi == -1) continue; //note out of bounds; should be done in some smarter ways
+        hz0 = (int) (pow(2,((midi - 69)/12.0)) * 440);
+        offset = frame_8k * SKIPLEN * BYTES_PER_SAMPLE;
+        af = cal_feature(audiodata+offset, hz0);
+        fprintf(fp,"%d\t%f\t%f\t%f\n", i, af.hz, af.amp, hz0);
+
+    }
+    
+    fclose(fp);
 }
 
 

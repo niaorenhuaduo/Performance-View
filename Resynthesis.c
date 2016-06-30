@@ -31,16 +31,11 @@ float cal_amp(unsigned char *ptr) {
 
 
 //calculate feature vector for a given frame of audio
-float cal_feature(unsigned char *ptr, float hz0) {
+AUDIO_FEATURE cal_feature(unsigned char *ptr, float hz0) {
     AUDIO_FEATURE af;
     af.hz = cal_pitch_yin(ptr, hz0);
     af.amp = cal_amp(ptr);
-    //add other features?
-}
-
-//measure similarity between two audio frame feature vectors
-float compare_feature(int ff1, int ff2) {
-    
+    return af;
 }
 
 int binary_search(int firstnote, int lastnote, int search)
@@ -52,7 +47,7 @@ int binary_search(int firstnote, int lastnote, int search)
     last = lastnote;
     middle = (first+last)/2;
     
-    while (first <= last) {
+    while (first < last) {
         if (score.solo.note[middle].frames > search) //frame occured before the beginning of the middle note
             last = middle;
         else if (score.solo.note[middle+1].frames > search) { //found note
@@ -63,8 +58,7 @@ int binary_search(int firstnote, int lastnote, int search)
         middle = (first + last)/2;
     }
     
-    printf("error in binary_search: frame not found");
-    exit(0);
+    return(-1);
 }
 
 
@@ -93,5 +87,6 @@ void prep_cal_feature(int frame, unsigned char* audioname) {
     
     cal_feature(ptr, hz0);
 }
+
 
 
