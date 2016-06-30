@@ -59,17 +59,27 @@ int16_t Yin_absoluteThreshold(Yin *yin, int hz_hat){
     int16_t tau;
     int hz_max = (int) hz_hat * pow(2,(1.7/12.0));
     int hz_min = (int) hz_hat * pow(2,(-1.7/12.0));
-    int16_t tau_max = (int16_t) ceilf((float) SAMPLE_SR / hz_min);
-    int16_t tau_min = (int16_t) floorf((float) SAMPLE_SR / hz_max);
+    int16_t tau_max = (int16_t) ceilf((float) YIN_SAMPLING_RATE / hz_min);
+    int16_t tau_min = (int16_t) floorf((float) YIN_SAMPLING_RATE / hz_max);
+    
+    float smallest = HUGE_VAL;
+    int16_t min_index = -1;
+    for (tau = tau_min; tau < tau_max; tau++) {
+        if (smallest > yin->yinBuffer[tau]) {
+            smallest = yin->yinBuffer[tau];
+            min_index = tau;
+        }
+    }
+    return min_index;
     
     /* Search through the array of cumulative mean values, and look for ones that are over the threshold
      * The first two positions in yinBuffer are always so start at the third (index 2) */
     //for (tau = 2; tau < yin->halfBufferSize ; tau++) {
-    for (tau = tau_min; tau < tau_max; tau++) {
-        if (yin->yinBuffer[tau] < yin->threshold) {
-            while (tau + 1 < yin->halfBufferSize && yin->yinBuffer[tau + 1] < yin->yinBuffer[tau]) {
-                tau++;
-            }
+    //for (tau = tau_min; tau < tau_max; tau++) {
+     //   if (yin->yinBuffer[tau] < yin->threshold) {
+      //      while (tau + 1 < yin->halfBufferSize && yin->yinBuffer[tau + 1] < yin->yinBuffer[tau]) {
+       //         tau++;
+        //    }
             /* found tau, exit loop and return
              * store the probability
              * From the YIN paper: The yin->threshold determines the list of
@@ -79,18 +89,18 @@ int16_t Yin_absoluteThreshold(Yin *yin, int hz_hat){
              *
              * Since we want the periodicity and and not aperiodicity:
              * periodicity = 1 - aperiodicity */
-            yin->probability = 1 - yin->yinBuffer[tau];
-            break;
-        }
-    }
+        //    yin->probability = 1 - yin->yinBuffer[tau];
+         //   break;
+        //}
+   // }
     
-    /* if no pitch found, tau => -1 */
-    if (tau == yin->halfBufferSize || yin->yinBuffer[tau] >= yin->threshold) {
+    /// if no pitch found, tau => -1
+    /*if (tau == yin->halfBufferSize || yin->yinBuffer[tau] >= yin->threshold) {
         tau = -1;
         yin->probability = 0;
-    }
+    }*/
     
-    return tau;
+    //return tau;
 }
 
 /**
@@ -149,6 +159,9 @@ float Yin_parabolicInterpolation(Yin *yin, int16_t tauEstimate) {
         // fixed AUBIO implementation, thanks to Karl Helgason:
         // (2.0f * s1 - s2 - s0) was incorrectly multiplied with -1
         betterTau = tauEstimate + (s2 - s0) / (2 * (2 * s1 - s2 - s0));
+        if (betterTau <= x0) betterTau = x0; //added code: if the parabolic estimation sends the value out of bounds
+        if (betterTau >= x2) betterTau = x2;
+
     }
     
     
@@ -210,7 +223,6 @@ float Yin_getPitch(Yin *yin, int16_t* buffer, int hz_hat){
     if(tauEstimate != -1){
         pitchInHertz = YIN_SAMPLING_RATE / Yin_parabolicInterpolation(yin, tauEstimate);
     }
-    
     return pitchInHertz;
 }
 

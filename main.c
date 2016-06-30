@@ -128,6 +128,7 @@ maininit() {
   scorename[0] = 0;   /* score unset */
 
   data = (float *) malloc(FRAMELEN*sizeof(float));
+  data48k = (float *) malloc(FRAMELEN_48k*sizeof(float));
   orch_data_frame = (float *) malloc(FRAMELEN*sizeof(float));
 
   spect = (float *) malloc(freqs*sizeof(float));

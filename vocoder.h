@@ -9,6 +9,11 @@
 #define HOP 4                  //CF:  number of grains getting mixed into each output frame
 #define HOP_LEN (VOC_TOKEN_LEN/HOP)
 
+typedef struct {
+    float hz;
+    float amp;
+} AUDIO_FEATURE;
+
 float vcode_frames2secs(float f);
 void set_netural_vocoder_rate();
 float vcode_cur_pos_secs();
@@ -35,6 +40,12 @@ void set_phase_func(float f, float *func);
 void set_modulus_phase_func(float f, float *mod, float *phase);
 void interleave_with_null_channel(unsigned char *out, unsigned char *inter, int n);
 void interleave_mono_channels(unsigned char *left, unsigned char *right, unsigned char *mix, int n);
+
+extern AUDIO_FEATURE cal_feature(int offset, float hz0);
+int get_frame_count();
+
+float cal_pitch_yin(unsigned char *ptr, float hz0);
+float cal_amp(unsigned char *ptr);
 
 void set_orch_pitch(float p);
 float get_orch_pitch();

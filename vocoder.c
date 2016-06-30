@@ -149,6 +149,19 @@ static ORCH_IO_STRUCT orch_in;
 #define  SAMPLES_PER_FRAME  (VOC_TOKEN_LEN/((float)HOP))
 #define  SAMPS_PER_FRAME  (VOC_TOKEN_LEN/HOP)
 
+int get_frame_count() {
+    return vring.audio_frames;
+}
+
+//calculate feature vector for a given frame of audio
+AUDIO_FEATURE cal_feature(int offset, float hz0) {
+    AUDIO_FEATURE af;
+    unsigned char *ptr = vring.audio + offset;
+    af.hz = cal_pitch_yin(ptr, hz0);
+    af.amp = cal_amp(ptr);
+    printf("\nhz estimate %f", af.hz);
+    return af;
+}
 
 void
 set_vcode_data_type(int i) {  /* 0 means raw data and 1 means spectrogram data */

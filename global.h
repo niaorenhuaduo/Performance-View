@@ -28,6 +28,7 @@ extern int new_data;  /* boolean.  have we read in new data yet this iteration? 
 
 extern float *spect;        /* the fft'ed and processed token */
 extern float *data;
+extern float *data48k;
 extern int freqs;
 extern PITCH *sol;   /* solfege array */
 extern int  *notetime;       /* notetime[i] is time in beats the ith note starts */

@@ -167,7 +167,6 @@ void cumulative_sum(int sr) {
         curr += (double) 2*PI*cumsum_freq[i] / sr;
         if (curr >= 2*PI) curr -= 2*PI*floor(curr/(2*PI));
         cumsum_freq[i] = (float) curr;
-        if (i%100 == 0) printf("\n%f", cumsum_freq[i]);
 
         //if (i >= score.solo.note[1].frames * SKIPLEN * IO_FACTOR)printf("\ncumsum freq = %f",  cumsum_freq[i]);
     }
@@ -199,7 +198,7 @@ void resynth_solo(int sr) { //use cumsum instead of concatenating sine waves
     fp = fopen(stump, "wb");
     fwrite(synth_pitch,MAX_SAMPLE,BYTES_PER_SAMPLE, fp);
     fclose(fp);
-    play_synthesis = 0;
+    play_synthesis = 1;
 }
 
 void save_audio_data(){
@@ -243,10 +242,8 @@ void save_audio_data(){
 }
 
 void resynth_solo_phase_vocoder() {
-    //temporarily add test here:
-    prep_cal_feature(560, audiodata);
     char stump[500];
-    
+    write_features("/Users/apple/Documents/Performance-View/user/audio/sanna/mozart_voi_che_sapete/mozart_voi_che_sapete.005.features");
     float temp[FREQDIM],m,x,tp[FRAMELEN], tp2[FRAMELEN];
     int i,t,offset;
     unsigned char *ptr, *ptr2;
@@ -286,8 +283,7 @@ void resynth_solo_phase_vocoder() {
             float test1 = tp[ii];
             float test2 = tp2[ii];
             
-            if(test1 != 0)
-                  printf("hello %f", test1 - test2);
+            //if(test1 != 0) printf("hello %f", test1 - test2);
         }
     }
     
@@ -593,7 +589,6 @@ int calc_inst_freq_bin_yin(int pos, int bin) {
     pitch = Yin_getPitch(&yin, ptr1, hz_hat);
     buffer_length++;
     
-    printf("Pitch is found to be %f with buffer length %i and probability %f\n",pitch, buffer_length, Yin_getProbability(&yin) );
     inst_freq[pos] = pitch; //actual instantaneous frequency
 
     inst_bin = hz2omega(inst_freq[pos]);
@@ -1686,7 +1681,7 @@ buffer_hires_audio() {
         strcat(stump,current_examp);
         strcat(stump,".48k");
     }
-    
+        
     hires_solo_fp = fopen(stump,"rb");
     //  if (hires_solo_fp == NULL) hires_solo_fp = fopen(HIRES_OUT_NAME,"rb");
     if (hires_solo_fp == NULL) { is_hires_audio = 0; return; }

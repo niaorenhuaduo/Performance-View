@@ -74,6 +74,7 @@ int   lasttoken;     /* boolean for (out of data?) */
 int   token;         /* currently examining the token-th frame */
 int   freqs;         /* number of measured frequecies in FFT (half of FFT length */
 float *data;         /* contains one token's worth of raw data */
+float *data48k;         /* contains one token's worth of raw data */
 PITCH *sol;          /* solfege array */
 
 

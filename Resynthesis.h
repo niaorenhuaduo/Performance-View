@@ -13,11 +13,14 @@
 #include "share.h"
 #include "audio.h"
 #include "global.h"
+#include "vocoder.h"
 
 
 #include <stdio.h>
 
-void prep_cal_feature(int frame, unsigned char* audioname);
+AUDIO_FEATURE prep_cal_feature(int frame, unsigned char* audioname);
+void test_swap_similar_frames();
+void write_features(char *name);
 
 #endif /* Resynthesis_h */
 
