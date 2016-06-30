@@ -241,6 +241,7 @@ display_range_string() {
 - (IBAction)RefineAndTrainAction:(id)sender {
     int i;
     char *num;
+    char name[200];
     
     current_examp[0] = 0;
     i = [_ReadAudioNewTable selectedRow];
@@ -251,7 +252,10 @@ display_range_string() {
     strcat(current_examp,num);
     printf("current_ex = %s\n",current_examp);
     
-    char *name = "/Users/Hipapa/Desktop/test.raw";
+    
+    strcpy(name, user_desktop);
+    strcpy(name, "test.raw");
+    
     new_create_raw_from_48k(name);
     if (read_48khz_raw_audio_name(name) == 0) return(0);
     

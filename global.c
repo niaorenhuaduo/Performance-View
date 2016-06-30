@@ -115,6 +115,7 @@ int focus_on_live = 1;  // the live panel is enabled and the mixer controls refe
 PERFORMANCE_STATE live_range = {{-1,0},{-1,0}, 0, 0};
 PERFORMANCE_STATE take_range = {{-1,0},{-1,0}, 0, 0};
 char user_dir[500];
+char user_desktop[500];
 char live_failure_string[500];
 int mmo_mode = 0;  // only follow soloist on cues.
 int orchestra_shift_ms = 0;  // shift orchestra times by this much.  positive value makes the orchestra play more "on top" of soloist

@@ -206,7 +206,8 @@ void resynth_solo(int sr) { //use cumsum instead of concatenating sine waves
 void save_audio_data(){
     char fileName[200];
     
-     strcpy(fileName, "/Users/Hipapa/Desktop/output.wav");
+    strcpy(fileName, user_desktop);
+    strcpy(fileName, "output.wav");
 
     FILE *fp = fopen(fileName,"w");
       WavHeader header;
@@ -294,33 +295,34 @@ static void read_features(char *name, AUDIO_FEATURE_LIST *list) {
 }
 
 void resynth_solo_phase_vocoder() {
-      char name[200];
-      
-      strcpy(name,audio_data_dir);
-      strcat(name,current_examp);
-      strcat(name,".feature");
-      
-//      write_features(name);
-//      AUDIO_FEATURE_LIST database_feature_list;
-//      cal_vcode_features(&database_feature_list);
-      AUDIO_FEATURE_LIST database_feature_list;
-      read_features(name, &database_feature_list);
-      
-      AUDIO_FEATURE_LIST saved_feature_list;
-      read_features("/Users/Hipapa/Projects/Git/Performance-View/user/audio/Andrew N/sibelius_violin_concerto_mvmt1/sibelius_violin_concerto_mvmt1.002.feature", &saved_feature_list);
-      
-      vcode_init();
-      temp_rewrite_audio();
-      for(int i = 0; i < saved_feature_list.num; i++){ //i is the frame index of test data
-            //vcode_synth_frame_var(i);
-            AUDIO_FEATURE frame_feature = saved_feature_list.el[i];
-            if(frame_feature.hz < 0) continue;
-            int j = find_closest_frame_index(frame_feature, database_feature_list);
-            
-            //vcode_synth_frame_var(j);
-            //for(int k = 0; k < 20; k++)
-            vcode_synth_frame_var(j);
-      }
+    char name[200];
+    char target_name[200];
+    
+    strcpy(name,audio_data_dir);
+    strcat(name,current_examp);
+    strcat(name,".feature");
+    
+    strcpy(target_name,audio_data_dir);
+    strcat(target_name,"audio/Andrew N/sibelius_violin_concerto_mvmt1/sibelius_violin_concerto_mvmt1.002.feature");
+    
+    AUDIO_FEATURE_LIST database_feature_list;
+    read_features(name, &database_feature_list);
+    
+    AUDIO_FEATURE_LIST saved_feature_list;
+    read_features(target_name, &saved_feature_list);
+    
+    vcode_init();
+    temp_rewrite_audio();
+    for(int i = 0; i < saved_feature_list.num; i++){ //i is the frame index of test data
+        //vcode_synth_frame_var(i);
+        AUDIO_FEATURE frame_feature = saved_feature_list.el[i];
+        if(frame_feature.hz < 0) continue;
+        int j = find_closest_frame_index(frame_feature, database_feature_list);
+        
+        //vcode_synth_frame_var(j);
+        //for(int k = 0; k < 20; k++)
+        vcode_synth_frame_var(j);
+    }
 }
 
 
@@ -807,6 +809,7 @@ draw_note_markers(int b) {
 }
 
 void calculate_amplitude(startframe, endframe) {
+    char fileName[500];
     unsigned char *temp;
     int offset;
     float amp;
@@ -819,30 +822,11 @@ void calculate_amplitude(startframe, endframe) {
             inst_amp[j] += data[i]*data[i];
         }
     }
+    
+    strcpy(fileName, user_dir);
+    strcat(fileName, "/audio/inst_amp");
     FILE *fp;
-    fp = fopen("/Users/Hipapa/Projects/Git/Performance-View/user/audio/inst_amp", "w");
-    fwrite(inst_amp, sizeof(float), 4500, fp);
-    fclose(fp);
-}
-
-void calculate_amplitude2(startframe, endframe) { //delete this one: it takes the max value
-    unsigned char *temp;
-    int offset;
-    float max_amp;
-    for (int j = startframe; j < endframe; j++) {
-        offset =  max(( (j+1)*SKIPLEN - FRAMELEN)*BYTES_PER_SAMPLE,0); //won't this be one skiplen too far back?
-        temp =  audiodata + offset;
-        samples2floats(temp, data, FRAMELEN);
-        max_amp = -1;
-        for (int i = 0; i < FRAMELEN; i++) {
-            if (data[i] > max_amp) {
-                max_amp = data[i];
-            }
-        }
-        inst_amp[j] = max_amp;
-    }
-    FILE *fp;
-    fp = fopen("/Users/Hipapa/Projects/Git/Performance-View/user/audio/inst_amp", "w");
+    fp = fopen(fileName, "w");
     fwrite(inst_amp, sizeof(float), 4500, fp);
     fclose(fp);
 }
