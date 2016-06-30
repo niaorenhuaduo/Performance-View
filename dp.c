@@ -5814,8 +5814,8 @@ new_create_raw_from_48k(char *name) {
   while (1) {
     fread(buff,DOWN_CHUNK*6,2,fph);
     if (feof(fph)) break;
-    downsample_audio(buff,obuff, 6*DOWN_CHUNK,6);
-    fwrite(obuff,DOWN_CHUNK,2,fpl);
+    //downsample_audio(buff,obuff, 6*DOWN_CHUNK,6);
+    fwrite(buff,DOWN_CHUNK*6,2,fpl);
   }
   fclose(fpl);
   fclose(fph);

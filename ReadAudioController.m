@@ -250,6 +250,11 @@ display_range_string() {
     strcat(current_examp,".");
     strcat(current_examp,num);
     printf("current_ex = %s\n",current_examp);
+    
+    char *name = "/Users/Hipapa/Desktop/test.raw";
+    new_create_raw_from_48k(name);
+    if (read_48khz_raw_audio_name(name) == 0) return(0);
+    
     decode_if_needed();
     if (read_audio_indep() == 0) {
         [[NSAlert alertWithMessageText:@"bad format in parse file"

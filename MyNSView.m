@@ -311,15 +311,16 @@ void resynth_solo_phase_vocoder() {
       
       vcode_init();
       temp_rewrite_audio();
-      for(int i = 1000; i < 2000;/*saved_feature_list.num;*/ i++){ //i is the frame index of test data
-            vcode_synth_frame_var(i);
-//            AUDIO_FEATURE frame_feature = saved_feature_list.el[i];
-//            if(frame_feature.hz < 0) continue;
-//            int j = find_closest_frame_index(frame_feature, database_feature_list);
-//            
-//            for(int k = 0; k < 20; k++)
-//                  vcode_synth_frame_var(j+k);
-            }
+      for(int i = 0; i < saved_feature_list.num; i++){ //i is the frame index of test data
+            //vcode_synth_frame_var(i);
+            AUDIO_FEATURE frame_feature = saved_feature_list.el[i];
+            if(frame_feature.hz < 0) continue;
+            int j = find_closest_frame_index(frame_feature, database_feature_list);
+            
+            //vcode_synth_frame_var(j);
+            //for(int k = 0; k < 20; k++)
+            vcode_synth_frame_var(j);
+      }
 }
 
 

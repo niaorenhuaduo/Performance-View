@@ -250,11 +250,11 @@ read_score_files() {
       read_vcode_data();
     }
     else {
-      strcpy(audio,score);
-      strcat(audio, "raw");
-      
-      printf("reading 48Khz data %s\n",audio);
-      if (read_48khz_raw_audio_name(audio) == 0) return(0);
+//      strcpy(audio,score);
+//      strcat(audio, "raw");
+//      
+//      printf("reading 48Khz data %s\n",audio);
+//      if (read_48khz_raw_audio_name(audio) == 0) return(0);
       
     }
   }
