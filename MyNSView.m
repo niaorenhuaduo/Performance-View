@@ -287,11 +287,10 @@ static void read_features(char *name, AUDIO_FEATURE_LIST *list) {
     fscanf(fp,"Total number of frames: %d\n",&frames);
     
     AUDIO_FEATURE af;
-    int hz0;
     list->num = 0;
     list->el = malloc(frames * sizeof(AUDIO_FEATURE));
     while (feof(fp) == 0) {
-      fscanf(fp, "%d\t%f\t%f\t%f\n", &af.frame, &af.hz, &af.amp, &hz0);
+      fscanf(fp, "%d\t%f\t%f\t%f\n", &af.frame, &af.hz, &af.amp, &af.nominal);
       list->el[list->num++] = af;
     }
     
@@ -386,13 +385,24 @@ void resynth_solo_phase_vocoder() {
       
       build_best_path(best, database_feature_list, n_best);
       
-      float penalty = 1000;//100;
+      float penalty = 100;
+      int trans_interval = 5;
       for(int i = 1; i < saved_feature_list.num; i++){
             AUDIO_FEATURE f1 = saved_feature_list.el[i];
             f1.hz /= 3;//kludgy transposition
             for(int j = 0; j < database_feature_list.num; j++){
                   AUDIO_FEATURE f2 = database_feature_list.el[j];
                   float dis = frame_feature_dist(f1, f2);
+                  
+                  if(j > 0 && score[i][j] > score[i-1][j-1] + dis){
+                        score[i][j] = score[i-1][j-1] + dis;
+                        prev[i][j] = j-1;//needs to be fixed, j-1 is the index of feature list but not actually the index of frame
+                  }
+                  
+                  if(i > trans_interval && f1.nominal != saved_feature_list.el[i - trans_interval].nominal) continue;
+                  
+                  if(i < saved_feature_list.num - trans_interval && f1.nominal != saved_feature_list.el[i + trans_interval].nominal) continue;
+                  
                   for(int jj = 0; jj < n_best; jj++){
                         int index = best[j][jj];
                         if(score[i][j] > score[i-1][index] + dis + penalty){
@@ -401,10 +411,7 @@ void resynth_solo_phase_vocoder() {
                         }
             
                   }
-                  if(j > 0 && score[i][j] > score[i-1][j-1] + dis){
-                        score[i][j] = score[i-1][j-1] + dis;
-                        prev[i][j] = j-1;//needs to be fixed, j-1 is the index of feature list but not actually the index of frame
-                  }
+                  
             }
       }
       

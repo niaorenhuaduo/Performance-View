@@ -24,8 +24,8 @@ INC_VALS inc_vals;
 - (void)applicationDidFinishLaunching:(NSNotification *)aNotification
 {
       //the only two global variable taking path of interest
-    strcpy(user_dir,"/Users/apple/Documents/Performance-View/user/"); //???moved this higher, it came after setIncButtons
-    strcpy(user_desktop, "/Users/apple/Desktop/");
+    strcpy(user_dir,"/Users/Hipapa/Projects/Git/Performance-View/user/"); //???moved this higher, it came after setIncButtons
+    strcpy(user_desktop, "/Users/Hipapa/Desktop/");
     
     maininit();
     [self setIncButtons];
