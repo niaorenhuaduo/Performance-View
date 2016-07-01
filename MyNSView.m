@@ -250,6 +250,11 @@ float compare_feature(AUDIO_FEATURE ff1, AUDIO_FEATURE ff2) {
     return euclid_dist;
 }
 
+static float frame_feature_dist(AUDIO_FEATURE ff1, AUDIO_FEATURE ff2){
+      float dist = fabs(ff1.hz - ff2.hz) + 100*fabs(ff1.amp - ff2.amp);
+      return dist;
+}
+
 static int find_closest_frame_index(AUDIO_FEATURE f, AUDIO_FEATURE_LIST database){
       int opt = -1;
       float dist = HUGE_VAL;
@@ -282,47 +287,153 @@ static void read_features(char *name, AUDIO_FEATURE_LIST *list) {
     fscanf(fp,"Total number of frames: %d\n",&frames);
     
     AUDIO_FEATURE af;
-    int i;
     int hz0;
     list->num = 0;
     list->el = malloc(frames * sizeof(AUDIO_FEATURE));
     while (feof(fp) == 0) {
-      fscanf(fp, "%d\t%f\t%f\t%f\n", &i, &af.hz, &af.amp, &hz0);
+      fscanf(fp, "%d\t%f\t%f\t%f\n", &af.frame, &af.hz, &af.amp, &hz0);
       list->el[list->num++] = af;
     }
     
     fclose(fp);
 }
 
+static int** malloc_int_matrix(int rows, int cols){
+      int **matrix = malloc(rows *sizeof(int*));
+      
+      for(int i = 0; i < rows; i++){
+            matrix[i] = malloc(cols *sizeof(int));
+      }
+      return matrix;
+}
+
+static float** malloc_float_matrix(int rows, int cols){
+      float ** matrix = malloc(rows *sizeof(float*));
+      
+      for(int i = 0; i < rows; i++){
+            matrix[i] = malloc(cols *sizeof(float));
+      }
+      return matrix;
+}
+
+typedef struct{
+      int index;
+      float score;
+} PAIR;
+
+static int cmp_pair(void *ptr1, void *ptr2){
+      PAIR *p1 = (PAIR *)ptr1;
+      PAIR *p2 = (PAIR *)ptr2;
+      if(p1->score < p2->score) return -1;
+      else if(p1->score == p2->score) return 0;
+      else return 1;
+}
+
+static void build_best_path(int **best, AUDIO_FEATURE_LIST list, int num){
+      PAIR *p = malloc(list.num *sizeof(PAIR));
+      
+      for(int i = 0; i < list.num; i++){
+            AUDIO_FEATURE f = list.el[i];
+            
+            for(int j = 0; j < list.num; j++){
+                  AUDIO_FEATURE f2 = list.el[j];
+                  PAIR temp;
+                  temp.index = j;
+                  temp.score = frame_feature_dist(f, f2);
+                  p[j] = temp;
+            }
+            qsort(p, list.num, sizeof(PAIR), cmp_pair);
+            
+            for(int j = 0; j < num; j++){
+                  best[i][j] = p[j].index;
+            }
+      }
+}
+
+
 void resynth_solo_phase_vocoder() {
-    char name[200];
-    char target_name[200];
-    
-    strcpy(name,audio_data_dir);
-    strcat(name,current_examp);
-    strcat(name,".feature");
-    
-    strcpy(target_name,audio_data_dir);
-    strcat(target_name,"audio/Andrew N/sibelius_violin_concerto_mvmt1/sibelius_violin_concerto_mvmt1.002.feature");
-    
-    AUDIO_FEATURE_LIST database_feature_list;
-    read_features(name, &database_feature_list);
-    
-    AUDIO_FEATURE_LIST saved_feature_list;
-    read_features(target_name, &saved_feature_list);
-    
-    vcode_init();
-    temp_rewrite_audio();
-    for(int i = 0; i < saved_feature_list.num; i++){ //i is the frame index of test data
-        //vcode_synth_frame_var(i);
-        AUDIO_FEATURE frame_feature = saved_feature_list.el[i];
-        if(frame_feature.hz < 0) continue;
-        int j = find_closest_frame_index(frame_feature, database_feature_list);
-        
-        //vcode_synth_frame_var(j);
-        //for(int k = 0; k < 20; k++)
-        vcode_synth_frame_var(j);
-    }
+      char name[200];
+      
+      strcpy(name,audio_data_dir);
+      strcat(name,current_examp);
+      strcat(name,".feature");
+      
+//      write_features(name);
+
+      AUDIO_FEATURE_LIST database_feature_list;
+      read_features(name, &database_feature_list);
+      
+      char target_name[200];
+      strcpy(target_name,user_dir);
+      strcat(target_name,"audio/Andrew N/sibelius_violin_concerto_mvmt1/sibelius_violin_concerto_mvmt1.002.feature");
+      AUDIO_FEATURE_LIST saved_feature_list;
+      read_features(target_name, &saved_feature_list);
+      
+      vcode_init();
+      temp_rewrite_audio();
+      
+      int n_best = 50;
+      float **score = malloc_float_matrix(saved_feature_list.num, database_feature_list.num);
+      int **prev = malloc_int_matrix(saved_feature_list.num, database_feature_list.num);
+      int **best = malloc_int_matrix(database_feature_list.num, n_best);
+      
+      for(int i = 0; i < saved_feature_list.num; i++){
+            for(int j = 0; j < database_feature_list.num; j++){
+                  score[i][j] = (i==0)? 0:HUGE_VAL;
+                  prev[i][j] = -1;
+            }
+      }
+      
+      build_best_path(best, database_feature_list, n_best);
+      
+      float penalty = 1000;//100;
+      for(int i = 1; i < saved_feature_list.num; i++){
+            AUDIO_FEATURE f1 = saved_feature_list.el[i];
+            f1.hz /= 3;//kludgy transposition
+            for(int j = 0; j < database_feature_list.num; j++){
+                  AUDIO_FEATURE f2 = database_feature_list.el[j];
+                  float dis = frame_feature_dist(f1, f2);
+                  for(int jj = 0; jj < n_best; jj++){
+                        int index = best[j][jj];
+                        if(score[i][j] > score[i-1][index] + dis + penalty){
+                              score[i][j] = score[i-1][index] + dis + penalty;
+                              prev[i][j] = index;
+                        }
+            
+                  }
+                  if(j > 0 && score[i][j] > score[i-1][j-1] + dis){
+                        score[i][j] = score[i-1][j-1] + dis;
+                        prev[i][j] = j-1;//needs to be fixed, j-1 is the index of feature list but not actually the index of frame
+                  }
+            }
+      }
+      
+      int i = saved_feature_list.num - 1;
+      float opt_score = HUGE_VAL;
+      int opt_j;
+      for(int j = 0; j < database_feature_list.num; j++){
+            if(score[i][j] < opt_score){
+                  opt_score = score[i][j];
+                  opt_j = j;
+            }
+      }
+      
+      int best_prev[saved_feature_list.num];
+      for(int i = saved_feature_list.num - 1; i > 0; i--){
+            best_prev[i] = database_feature_list.el[opt_j].frame;
+            opt_j = prev[i][opt_j];
+      }
+      
+      for(int i = 1; i < saved_feature_list.num; i++){ //i is the frame index of test data
+            //vcode_synth_frame_var(i);
+//            AUDIO_FEATURE frame_feature = saved_feature_list.el[i];
+//            if(frame_feature.hz < 0) continue;
+//            int j = find_closest_frame_index(frame_feature, database_feature_list);
+//            
+            vcode_synth_frame_var(best_prev[i]);
+
+            
+      }
 }
 
 
