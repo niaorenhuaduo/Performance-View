@@ -364,7 +364,7 @@ void resynth_solo_phase_vocoder() {
       read_features(name, &database_feature_list);
       
       char target_name[200];
-      strcpy(target_name,audio_data_dir);
+      strcpy(target_name,user_dir);
       strcat(target_name,"audio/Andrew N/sibelius_violin_concerto_mvmt1/sibelius_violin_concerto_mvmt1.002.feature");
       AUDIO_FEATURE_LIST saved_feature_list;
       read_features(target_name, &saved_feature_list);
