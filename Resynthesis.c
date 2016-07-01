@@ -88,5 +88,6 @@ void prep_cal_feature(int frame, unsigned char* audioname) {
     cal_feature(ptr, hz0);
 }
 
+//dp: do not allow jump when source is changing note. must use entire change of note
 
 

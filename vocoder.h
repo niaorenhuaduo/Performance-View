@@ -58,7 +58,6 @@ void read_orchestra_shift();
 void write_orchestra_shift();
 void temp_rewrite_audio();
 void temp_append_audio();
-void write_features(char *name);
 //void cal_vcode_features(AUDIO_FEATURE_LIST *flist);
 
 //------------------------

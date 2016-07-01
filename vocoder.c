@@ -2425,18 +2425,25 @@ void write_io_buff(CIRC_CHUNK_BUFF *buff, unsigned char *out) {
 }
 
 void temp_rewrite_audio() {
-  int d;
-  //remove the content
-      FILE *fp = fopen("/Users/Hipapa/Projects/Git/Performance-View/user/audio/new/new.raw", "wb");
-      fclose(fp);
+    int d;
+    char fileName[500];
+    
+    strcpy(fileName, user_dir);
+    strcat(fileName, "audio/new/new.raw");
+    //remove the content
+    FILE *fp = fopen(fileName, "wb");
+    fclose(fp);
 }
 
 void temp_append_audio(int size, unsigned char *out) {
-  int d;
-  
-      FILE *fp = fopen("/Users/Hipapa/Projects/Git/Performance-View/user/audio/new/new.raw", "ab");
-      fwrite(out,1,size,fp);
-      fclose(fp);
+    int d;
+    char fileName[500];
+    
+    strcpy(fileName, user_dir);
+    strcat(fileName, "audio/new/new.raw");
+    FILE *fp = fopen(fileName, "ab");
+    fwrite(out,1,size,fp);
+    fclose(fp);
 }
 
 void cal_vcode_features(AUDIO_FEATURE_LIST *flist){
