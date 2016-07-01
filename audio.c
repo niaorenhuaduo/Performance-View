@@ -199,33 +199,6 @@ void create_test_audiodata() {
 
 
 int
-read_target_audio() {
-    int fd;
-    int b,i;
-    unsigned char temp[TOKENLEN];
-    char  infop[50],file[500],suf[2];
-    unsigned ilen;
-    FILE *fp;
-    
-    fp = fopen("/Users/Hipapa/Projects/Git/Performance-View/user/audio/sanna/mozart_voi_che_sapete/mozart_voi_che_sapete.005.raw","rb");
-    if (fp == NULL) printf("couldn't open %s\n",audio_file);
-    
-    b = fread(audiodata_target,1,MAXAUDIO,fp);
-    
-    if (b == MAXAUDIO) { printf("%s too long\n",audiodata_target); exit(0); }
-    fclose(fp);
-    
-    /*  fd = open(audio_file,0);
-     if (fd == -1) { printf("can't open %s\n",audio_file); return(0); }
-     b = read(fd,audiodata,MAXAUDIO);
-     if (b == MAXAUDIO) { printf("\n%s  > %d bytes\n",audio_file,MAXAUDIO);  exit(0); }
-     close(fd);*/
-    frames_target = b/(SKIPLEN*BYTES_PER_SAMPLE);
-    printf("%d frames read\n",frames_target);
-    return(frames_target);
-}
-
-int
 readaudio() {
     int fd;
     int b,i;
@@ -267,7 +240,6 @@ readaudio() {
     frames = b/(SKIPLEN*BYTES_PER_SAMPLE);
     printf("%d frames read\n",frames);
     
-    //read_target_audio();
     return(frames);
 }
 
