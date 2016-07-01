@@ -352,34 +352,88 @@ static void build_best_path(int **best, AUDIO_FEATURE_LIST list, int num){
 
 
 void resynth_solo_phase_vocoder() {
-    char name[200];
-    char target_name[200];
-    
-    strcpy(name,audio_data_dir);
-    strcat(name,current_examp);
-    strcat(name,".feature");
-    
-    strcpy(target_name,audio_data_dir);
-    strcat(target_name,"audio/Andrew N/sibelius_violin_concerto_mvmt1/sibelius_violin_concerto_mvmt1.002.feature");
-    
-    AUDIO_FEATURE_LIST database_feature_list;
-    read_features(name, &database_feature_list);
-    
-    AUDIO_FEATURE_LIST saved_feature_list;
-    read_features(target_name, &saved_feature_list);
-    
-    vcode_init();
-    temp_rewrite_audio();
-    for(int i = 0; i < saved_feature_list.num; i++){ //i is the frame index of test data
-        //vcode_synth_frame_var(i);
-        AUDIO_FEATURE frame_feature = saved_feature_list.el[i];
-        if(frame_feature.hz < 0) continue;
-        int j = find_closest_frame_index(frame_feature, database_feature_list);
-        
-        //vcode_synth_frame_var(j);
-        //for(int k = 0; k < 20; k++)
-        vcode_synth_frame_var(j);
-    }
+      char name[200];
+      
+      strcpy(name,audio_data_dir);
+      strcat(name,current_examp);
+      strcat(name,".feature");
+      
+//      write_features(name);
+
+      AUDIO_FEATURE_LIST database_feature_list;
+      read_features(name, &database_feature_list);
+      
+      char target_name[200];
+      strcpy(target_name,audio_data_dir);
+      strcat(target_name,"audio/Andrew N/sibelius_violin_concerto_mvmt1/sibelius_violin_concerto_mvmt1.002.feature");
+      AUDIO_FEATURE_LIST saved_feature_list;
+      read_features(target_name, &saved_feature_list);
+      
+      vcode_init();
+      temp_rewrite_audio();
+      
+      int n_best = 50;
+      float **score = malloc_float_matrix(saved_feature_list.num, database_feature_list.num);
+      int **prev = malloc_int_matrix(saved_feature_list.num, database_feature_list.num);
+      int **best = malloc_int_matrix(database_feature_list.num, n_best);
+      
+      for(int i = 0; i < saved_feature_list.num; i++){
+            for(int j = 0; j < database_feature_list.num; j++){
+                  score[i][j] = (i==0)? 0:HUGE_VAL;
+                  prev[i][j] = -1;
+            }
+      }
+      
+      build_best_path(best, database_feature_list, n_best);
+      
+      float penalty = 1000;//100;
+      for(int i = 1; i < saved_feature_list.num; i++){
+            AUDIO_FEATURE f1 = saved_feature_list.el[i];
+            f1.hz /= 3;//kludgy transposition
+            for(int j = 0; j < database_feature_list.num; j++){
+                  AUDIO_FEATURE f2 = database_feature_list.el[j];
+                  float dis = frame_feature_dist(f1, f2);
+                  for(int jj = 0; jj < n_best; jj++){
+                        int index = best[j][jj];
+                        if(score[i][j] > score[i-1][index] + dis + penalty){
+                              score[i][j] = score[i-1][index] + dis + penalty;
+                              prev[i][j] = index;
+                        }
+            
+                  }
+                  if(j > 0 && score[i][j] > score[i-1][j-1] + dis){
+                        score[i][j] = score[i-1][j-1] + dis;
+                        prev[i][j] = j-1;//needs to be fixed, j-1 is the index of feature list but not actually the index of frame
+                  }
+            }
+      }
+      
+      int i = saved_feature_list.num - 1;
+      float opt_score = HUGE_VAL;
+      int opt_j;
+      for(int j = 0; j < database_feature_list.num; j++){
+            if(score[i][j] < opt_score){
+                  opt_score = score[i][j];
+                  opt_j = j;
+            }
+      }
+      
+      int best_prev[saved_feature_list.num];
+      for(int i = saved_feature_list.num - 1; i > 0; i--){
+            best_prev[i] = database_feature_list.el[opt_j].frame;
+            opt_j = prev[i][opt_j];
+      }
+      
+      for(int i = 1; i < saved_feature_list.num; i++){ //i is the frame index of test data
+            //vcode_synth_frame_var(i);
+//            AUDIO_FEATURE frame_feature = saved_feature_list.el[i];
+//            if(frame_feature.hz < 0) continue;
+//            int j = find_closest_frame_index(frame_feature, database_feature_list);
+//            
+            vcode_synth_frame_var(best_prev[i]);
+
+            
+      }
 }
 
 
