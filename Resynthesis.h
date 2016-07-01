@@ -20,6 +20,7 @@
 typedef struct {
     float hz;
     float amp;
+    int frame;
     //add other features?
 } AUDIO_FEATURE;
 
