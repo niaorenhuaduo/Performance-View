@@ -350,6 +350,8 @@ static void build_best_path(int **best, AUDIO_FEATURE_LIST list, int num){
     free(p);
 }
 
+//void ();
+
 
 void resynth_solo_phase_vocoder() {
       char name[200];
@@ -357,9 +359,9 @@ void resynth_solo_phase_vocoder() {
       strcpy(name,audio_data_dir);
       strcat(name,current_examp);
       strcat(name,".feature");
-      
-      write_features(name);
+    
       return;
+    
 
       AUDIO_FEATURE_LIST database_feature_list;
       read_features(name, &database_feature_list);

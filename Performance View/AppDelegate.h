@@ -55,6 +55,9 @@
 - (IBAction)NavBackwardButton:(id)sender;
 
 
+- (IBAction)CalculateFeatures:(id)sender;
+
+
 -(void)setStatRange:(char *) meas;
 -(void)setStatTake:(char *) take;
 -(void) enablePanel: (char *) s val:(BOOL) b;
@@ -93,6 +96,7 @@
 //@property (assign) IBOutlet NSPopUpButton *NoteMarkIncOutlet;
 @property (assign) IBOutlet NSButton *MarkerCheckOutlet;
 @property (assign) IBOutlet NSPopUpButton *NoteMarkIncOutlet;
+
 
 
 

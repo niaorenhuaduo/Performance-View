@@ -41,7 +41,7 @@ extern int first_accomp,last_accomp;
 extern char score_title[];
 extern char asio_driver[];
 
-
+extern void write_features(char *name);
 
 extern JN state_hat;  /* current kalman state */
 extern float phrase_start;

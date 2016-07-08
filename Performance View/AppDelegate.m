@@ -692,6 +692,16 @@ static int nav_increment;
     
 }
 
+- (IBAction)CalculateFeatures:(id)sender {
+    char name[200];
+    
+    strcpy(name,audio_data_dir);
+    strcat(name,current_examp);
+    strcat(name,".feature");
+    
+    write_features(name);
+}
+
 
 void
 init_incs() {
@@ -826,6 +836,8 @@ init_incs() {
     accomp_on_speakers = ios;  // restore state
     printf("reset accomp_on_speakers to %d\n",accomp_on_speakers);
 }
+
+
 
 
 
