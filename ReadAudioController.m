@@ -272,7 +272,6 @@ display_range_string() {
     [_NewReadAudioWindow close];
     [view_self displaySpect];
     
-    
     display_range_string();
     display_take_string();
     
@@ -290,7 +289,7 @@ display_range_string() {
     strcpy(directory, user_dir);
     strcat(directory, "database/");
     read_48khz_raw_audio_data_base(directory , &database_feature_list);
-    resynth_solo_phase_vocoder();
+    resynth_solo_phase_vocoder(database_feature_list);
 }
 
 @end
