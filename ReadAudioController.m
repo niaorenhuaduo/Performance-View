@@ -12,7 +12,6 @@
 #include "share.h"
 #include "global.h"
 #include <sys/stat.h>
-#include "Resynthesis.h"
 
 
 @implementation ReadAudioController
@@ -281,15 +280,6 @@ display_range_string() {
     [[[NSApplication sharedApplication] delegate] set_focus_on_navigate_panel];
     
 
-}
-
-- (IBAction)ReSynth:(id)sender {
-    AUDIO_FEATURE_LIST database_feature_list;
-    char directory[200];
-    strcpy(directory, user_dir);
-    strcat(directory, "database/");
-    read_48khz_raw_audio_data_base(directory , &database_feature_list);
-    resynth_solo_phase_vocoder(database_feature_list);
 }
 
 @end

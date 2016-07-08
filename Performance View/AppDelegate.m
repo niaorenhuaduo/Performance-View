@@ -14,6 +14,8 @@
 #import "MyNSView.h"
 #include "share.h"
 #include "global.h"
+#include "Resynthesis.h"
+#include "vocoder.h"
 
 INC_VALS inc_vals;
 
@@ -702,7 +704,15 @@ static int nav_increment;
 }
 
 - (IBAction)ReSynthesize:(id)sender {
-    resynth_solo_phase_vocoder();
+    AUDIO_FEATURE_LIST database_feature_list;
+    char directory[200];
+    strcpy(directory, user_dir);
+    strcat(directory, "database/");
+    if(read_48khz_raw_audio_data_base(directory , &database_feature_list) == 0){
+      NSLog(@"Problems in reading database");
+      return;
+    }
+    resynth_solo_phase_vocoder(database_feature_list);
 }
 
 
