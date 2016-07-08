@@ -588,7 +588,8 @@ read_48khz_raw_audio_data_base(char *directory, AUDIO_FEATURE_LIST *list) {
   
       strcpy(audio_file_name_stub, ent->d_name);
       audio_file_name_stub[strlen(audio_file_name_stub) - 8] = 0; //remove "_48k.raw"
-      strcpy(feature_file_name , audio_file_name_stub);
+      strcpy(feature_file_name , directory);
+      strcat(feature_file_name , audio_file_name_stub);
       strcat(feature_file_name, ".feature");
       append_features(feature_file_name, list);
     }
