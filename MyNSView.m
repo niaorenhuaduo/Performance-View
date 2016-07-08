@@ -383,6 +383,7 @@ void resynth_solo_phase_vocoder(AUDIO_FEATURE_LIST database_feature_list) {
             f1.hz /= 3;//kludgy transposition
             for(int j = 0; j < database_feature_list.num; j++){
                   AUDIO_FEATURE f2 = database_feature_list.el[j];
+                  if(f2.nominal == -1 || f2.hz == -1) continue;
                   float dis = frame_feature_dist(f1, f2);
                   
                   if(j > 0 && score[i][j] > score[i-1][j-1] + dis){
