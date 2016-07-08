@@ -206,8 +206,8 @@ void resynth_solo(int sr) { //use cumsum instead of concatenating sine waves
 void save_audio_data(){
     char fileName[200];
     
-    strcpy(fileName, user_desktop);
-    strcpy(fileName, "output.wav");
+    strcpy(fileName, user_dir);
+    strcat(fileName, "output.wav");
 
     FILE *fp = fopen(fileName,"w");
       WavHeader header;

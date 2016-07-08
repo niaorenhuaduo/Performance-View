@@ -116,7 +116,6 @@ extern int focus_on_live;
 extern PERFORMANCE_STATE live_range;
 extern PERFORMANCE_STATE take_range;
 extern char user_dir[];
-extern char user_desktop[];
 extern char live_failure_string[];
 extern int mmo_mode;
 extern int orchestra_shift_ms;

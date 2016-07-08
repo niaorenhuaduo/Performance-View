@@ -253,8 +253,8 @@ display_range_string() {
     printf("current_ex = %s\n",current_examp);
     
     
-    strcpy(name, user_desktop);
-    strcpy(name, "test.raw");
+    strcpy(name, user_dir);
+    strcat(name, "test.raw");
     
     new_create_raw_from_48k(name);
     if (read_48khz_raw_audio_name(name) == 0) return(0);
