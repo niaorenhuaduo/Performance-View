@@ -12,6 +12,7 @@
 #include "share.h"
 #include "global.h"
 #include <sys/stat.h>
+#include "Resynthesis.h"
 
 
 @implementation ReadAudioController
@@ -253,11 +254,11 @@ display_range_string() {
     printf("current_ex = %s\n",current_examp);
     
     
-    strcpy(name, user_dir);
-    strcat(name, "test.raw");
+    strcpy(name, audio_data_dir);
+    strcpy(name, current_examp);
+    strcat(name, "_48k.raw");
     
     new_create_raw_from_48k(name);
-    if (read_48khz_raw_audio_name(name) == 0) return(0);
     
     decode_if_needed();
     if (read_audio_indep() == 0) {
@@ -271,8 +272,7 @@ display_range_string() {
     [_NewReadAudioWindow close];
     [view_self displaySpect];
     
-    //resynth_solo(48000);
-    resynth_solo_phase_vocoder();
+    
     display_range_string();
     display_take_string();
     
@@ -283,4 +283,14 @@ display_range_string() {
     
 
 }
+
+- (IBAction)ReSynth:(id)sender {
+    AUDIO_FEATURE_LIST database_feature_list;
+    char directory[200];
+    strcpy(directory, user_dir);
+    strcat(directory, "database/");
+    read_48khz_raw_audio_data_base(directory , &database_feature_list);
+    resynth_solo_phase_vocoder();
+}
+
 @end

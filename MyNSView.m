@@ -350,25 +350,11 @@ static void build_best_path(int **best, AUDIO_FEATURE_LIST list, int num){
     free(p);
 }
 
-//void ();
-
-
-void resynth_solo_phase_vocoder() {
-      char name[200];
-      
-      strcpy(name,audio_data_dir);
-      strcat(name,current_examp);
-      strcat(name,".feature");
-    
-      return;
-    
-
-      AUDIO_FEATURE_LIST database_feature_list;
-      read_features(name, &database_feature_list);
-      
+void resynth_solo_phase_vocoder(AUDIO_FEATURE_LIST database_feature_list) {
       char target_name[200];
-      strcpy(target_name,user_dir);
-      strcat(target_name,"audio/Andrew N/sibelius_violin_concerto_mvmt1/sibelius_violin_concerto_mvmt1.002.feature");
+      strcpy(target_name,audio_data_dir);
+      strcat(target_name,current_examp);
+      strcat(target_name, ".feature");
       AUDIO_FEATURE_LIST saved_feature_list;
       read_features(target_name, &saved_feature_list);
       
@@ -400,7 +386,7 @@ void resynth_solo_phase_vocoder() {
                   
                   if(j > 0 && score[i][j] > score[i-1][j-1] + dis){
                         score[i][j] = score[i-1][j-1] + dis;
-                        prev[i][j] = j-1;//needs to be fixed, j-1 is the index of feature list but not actually the index of frame
+                        prev[i][j] = j-1;//already fixed? (needs to be fixed, j-1 is the index of feature list but not actually the index of frame)
                   }
                   
                   if(i > trans_interval && f1.nominal != saved_feature_list.el[i - trans_interval].nominal) continue; //no splice during note transition
@@ -434,14 +420,7 @@ void resynth_solo_phase_vocoder() {
       }
       
       for(int i = 1; i < saved_feature_list.num; i++){ //i is the frame index of test data
-            //vcode_synth_frame_var(i);
-//            AUDIO_FEATURE frame_feature = saved_feature_list.el[i];
-//            if(frame_feature.hz < 0) continue;
-//            int j = find_closest_frame_index(frame_feature, database_feature_list);
-//            
             vcode_synth_frame_var(best_prev[i]);
-
-            
       }
 }
 
