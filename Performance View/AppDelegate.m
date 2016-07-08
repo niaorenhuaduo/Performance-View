@@ -705,6 +705,8 @@ static int nav_increment;
 
 - (IBAction)ReSynthesize:(id)sender {
     AUDIO_FEATURE_LIST database_feature_list;
+    database_feature_list.num = 0;
+    database_feature_list.el = malloc(80000*sizeof(AUDIO_FEATURE));
     char directory[200];
     strcpy(directory, user_dir);
     strcat(directory, "database/");

@@ -550,11 +550,15 @@ read_48khz_raw_audio_data_base(char *directory, AUDIO_FEATURE_LIST *list) {
   struct dirent *ent;
   char feature_file_name[200];
   char audio_file_name_stub[200];
+  char audio_file_name[200];
   if ((dir = opendir (directory)) == NULL) return(0);
   
   while ((ent = readdir (dir)) != NULL) {
-    if(strstr(ent->d_name, ".raw") != 0){
-      fp = fopen(ent->d_name,"rb");
+    if(strstr(ent->d_name, "_48k.raw") != 0){
+    
+      strcpy(audio_file_name, directory);
+      strcat(audio_file_name, ent->d_name);
+      fp = fopen(audio_file_name,"rb");
       if (fp == NULL) { printf("couldn't read %s\n",ent->d_name); exit(0); }
       while (feof(fp) == 0) total +=  fread(temp,1,READ_TEST_SIZE,fp);
       fclose(fp);
@@ -571,8 +575,10 @@ read_48khz_raw_audio_data_base(char *directory, AUDIO_FEATURE_LIST *list) {
  
   int file_frame_len = 0;
   while ((ent = readdir (dir)) != NULL) {
-    if(strstr(ent->d_name, ".raw") != 0){
-      fp = fopen(ent->d_name,"rb");
+    if(strstr(ent->d_name, "_48k.raw") != 0){
+      strcpy(audio_file_name, directory);
+      strcat(audio_file_name, ent->d_name);
+      fp = fopen(audio_file_name,"rb");
 
       while (feof(fp) == 0) file_frame_len +=  fread(temp,1,READ_TEST_SIZE,fp);
       fseek(fp,0,SEEK_SET);
@@ -581,7 +587,7 @@ read_48khz_raw_audio_data_base(char *directory, AUDIO_FEATURE_LIST *list) {
       file_frame_len = 0;
   
       strcpy(audio_file_name_stub, ent->d_name);
-      audio_file_name_stub[strlen(audio_file_name_stub) - 7] = 0; //remove "_48k.raw"
+      audio_file_name_stub[strlen(audio_file_name_stub) - 8] = 0; //remove "_48k.raw"
       strcpy(feature_file_name , audio_file_name_stub);
       strcat(feature_file_name, ".feature");
       append_features(feature_file_name, list);
