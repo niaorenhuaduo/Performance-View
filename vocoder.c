@@ -27,6 +27,7 @@
 #include "wasapi.h"
 #include "belief.h"
 #include "Resynthesis.h"
+#include "new_score.h"
 
 
 //#define ORCH_PITCH  444  /* assuming that the orch recorded at a=440 */
@@ -4721,14 +4722,19 @@ void write_features(char *name) {
     frames = vring.audio_frames;
     fprintf(fp, "Total number of frames: %d\n", frames);
     for (int i = 0; i < frames; i++) {
-        frame_8k = i * HOP_LEN / (float) (SKIPLEN * 6);
+        frame_8k = i * HOP_LEN / (float) (SKIPLEN * 6); //get corresponding frame index at 8k in order to map it to corresponding MIDI note
         midi = binary_search(firstnote, lastnote, frame_8k);
-        if (midi == -1) continue; //note out of bounds; should be done in some smarter ways
-        hz0 = (int) (pow(2,((midi - 69)/12.0)) * 440);
-        offset = frame_8k * SKIPLEN * BYTES_PER_SAMPLE;
-        af = cal_feature(audiodata+offset, hz0);
-        fprintf(fp,"%d\t%f\t%f\t%f\n", i, af.hz, af.amp, hz0);
-
+        if (midi == -1 || midi == -2) { //note out of bounds: -1 if before/after solo, -2 if frame is during a rest
+            // should be done in some smarter ways.
+            fprintf(fp,"%d\t%f\t%f\t%f\n", i, -1.0, -1.0, -1.0); //signals unusable frame
+        }
+        else {
+            hz0 = (int) (pow(2,((midi - 69)/12.0)) * 440);
+            offset = frame_8k * SKIPLEN * BYTES_PER_SAMPLE;
+            af = cal_feature(audiodata+offset, hz0);
+            fprintf(fp,"%d\t%f\t%f\t%f\n", i, af.hz, af.amp, hz0);
+        }
+        
     }
     
     fclose(fp);

@@ -27,6 +27,7 @@ extern PROB_HIST  prob_hist[MAX_FRAMES];
 extern int new_data;  /* boolean.  have we read in new data yet this iteration? */
 
 extern float *spect;        /* the fft'ed and processed token */
+extern float *data_48k;
 extern float *data;
 extern int freqs;
 extern PITCH *sol;   /* solfege array */
@@ -130,9 +131,11 @@ extern float inst_amp[];
 extern float window[FRAMELEN];
 extern float coswindow[FRAMELEN];
 extern float coswindow2[FRAMELEN_PITCH];
+extern float coswindow_1024[FREQDIM];
 extern init_window();
 extern init_cos_window();
 extern init_cos_window2();
+extern init_cos_window_1024();
 extern float princarg(float phasein);
 extern unsigned char *synth_pitch;
 extern float *cumsum_freq;

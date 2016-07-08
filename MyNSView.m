@@ -251,7 +251,7 @@ float compare_feature(AUDIO_FEATURE ff1, AUDIO_FEATURE ff2) {
 }
 
 static float frame_feature_dist(AUDIO_FEATURE ff1, AUDIO_FEATURE ff2){
-      float dist = fabs(ff1.hz - ff2.hz) + 100*fabs(ff1.amp - ff2.amp);
+      float dist = fabsf(ff1.hz - ff2.hz) + 100*fabsf(ff1.amp - ff2.amp);
       return dist;
 }
 
@@ -347,6 +347,7 @@ static void build_best_path(int **best, AUDIO_FEATURE_LIST list, int num){
                   best[i][j] = p[j].index;
             }
       }
+    free(p);
 }
 
 
@@ -357,7 +358,8 @@ void resynth_solo_phase_vocoder() {
       strcat(name,current_examp);
       strcat(name,".feature");
       
-//      write_features(name);
+      write_features(name);
+      return;
 
       AUDIO_FEATURE_LIST database_feature_list;
       read_features(name, &database_feature_list);
@@ -399,7 +401,7 @@ void resynth_solo_phase_vocoder() {
                         prev[i][j] = j-1;//needs to be fixed, j-1 is the index of feature list but not actually the index of frame
                   }
                   
-                  if(i > trans_interval && f1.nominal != saved_feature_list.el[i - trans_interval].nominal) continue;
+                  if(i > trans_interval && f1.nominal != saved_feature_list.el[i - trans_interval].nominal) continue; //no splice during note transition
                   
                   if(i < saved_feature_list.num - trans_interval && f1.nominal != saved_feature_list.el[i + trans_interval].nominal) continue;
                   
@@ -409,9 +411,7 @@ void resynth_solo_phase_vocoder() {
                               score[i][j] = score[i-1][index] + dis + penalty;
                               prev[i][j] = index;
                         }
-            
                   }
-                  
             }
       }
       
@@ -919,7 +919,7 @@ draw_note_markers(int b) {
         //  if (m >= spectrogram->Width) continue;
         
         color = COLOR_RED | (f*COLOR_BLUE);
-        
+        if (is_solo_rest(j)) color = COLOR_T | (f*COLOR_Q);
         if (b) add_line_to_visible(m,color); else restore_line_to_visible(m);
         
     }
@@ -1588,7 +1588,7 @@ show_spect() {
     //  Spect->AccompRadioGroup->Refresh();
     // clicks_in = 1;
     //  Spect->MarkersRadioGroup->ItemIndex = 0;
-    show_rests = 0;
+    show_rests = 1;
     // spect_inc.num = 0; spect_inc.den = 1;
     last_frame = 0;
     save_audio_values();

@@ -189,7 +189,7 @@ INC_VALS inc_vals;
     if (frames == 0) return;
     clicks_in  = [sender state];
     [self enableMarkerControls];
-    show_rests = 0;
+    show_rests = 1;
     // [self ready_mix_panel];
     
     

@@ -19,6 +19,7 @@
 
 extern PITCH *sol;
 extern int freqs;
+extern float *data_48k;
 extern float *data;
 extern float *spect;
 
@@ -128,6 +129,7 @@ maininit() {
   scorename[0] = 0;   /* score unset */
 
   data = (float *) malloc(FRAMELEN*sizeof(float));
+  data_48k = (float *) malloc(FREQDIM*sizeof(float));
   orch_data_frame = (float *) malloc(FRAMELEN*sizeof(float));
 
   spect = (float *) malloc(freqs*sizeof(float));

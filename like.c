@@ -184,6 +184,7 @@ typedef struct {
 
 
 extern float *spect;        /* the fft'ed and processed token */
+extern float *data_48k;
 extern float *data;
 extern int freqs;
 extern PITCH *sol;   /* solfege array */
@@ -335,6 +336,7 @@ float xxx_last_spect[1000];
 float window[FRAMELEN];
 float coswindow[FRAMELEN];
 float coswindow2[FRAMELEN_PITCH];
+float coswindow_1024[FREQDIM];
 static float beta[FREQDIM/2];
 
 #define WIND_WIDTH 3.
@@ -371,6 +373,16 @@ init_cos_window2() {
         x = i*2*PI/(FRAMELEN_PITCH+1);
         coswindow2[i] = (1 + cosf(x - PI))/2;
         //printf("\nwindow at i = %d: %f", i, coswindow[i]);
+    }
+}
+
+init_cos_window_1024() {
+    float hz, x;
+    int i;
+    
+    for (i=0; i < FREQDIM; i++)  {
+        x = i*2*PI/(FREQDIM+1);
+        coswindow_1024[i] = (1 + cosf(x - PI))/2;
     }
 }
 
@@ -414,6 +426,7 @@ init_like() {
     init_window();
     init_cos_window();
     init_cos_window2();
+    init_cos_window_1024();
     init_beta();
 }
 

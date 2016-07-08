@@ -21,12 +21,12 @@ float cal_pitch_yin(unsigned char *ptr, float hz0) {
 
 float cal_amp(unsigned char *ptr) {
     float amp;
-    samples2floats(ptr, data, FRAMELEN);
+    samples2floats(ptr, data_48k, FREQDIM);
     amp = 0;
-    for (int i = 0; i < FRAMELEN; i++) { //sum of squares
-        amp += data[i]*data[i];
+    for (int i = 0; i < FREQDIM; i++) { //sum of squares
+        amp += data_48k[i]*data_48k[i]*coswindow_1024[i];
     }
-    return(sqrtf(amp/FRAMELEN));
+    return(sqrtf(amp/FREQDIM));
 }
 
 
@@ -51,6 +51,9 @@ int binary_search(int firstnote, int lastnote, int search)
         if (score.solo.note[middle].frames > search) //frame occured before the beginning of the middle note
             last = middle;
         else if (score.solo.note[middle+1].frames > search) { //found note
+            if (is_solo_rest(middle) == 1) {
+                return(-2); //note is a rest
+            }
             return score.solo.note[middle].snd_notes.snd_nums[0]; //return the midi pitch
         }
         else //frame occurred later than the current note
@@ -81,7 +84,6 @@ void prep_cal_feature(int frame, unsigned char* audioname) {
     ptr = audioname + offset;
     int temp = score.solo.note[first].frames;
     if (frame < score.solo.note[first].frames || frame > score.solo.note[last].frames) { printf("prep_cal_feature frame index out of score bounds"); exit(0); }
-    
     midi = binary_search(first, last, frame);
     hz0 = (int) (pow(2,((midi - 69)/12.0)) * 440);
     
