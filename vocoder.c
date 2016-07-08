@@ -28,6 +28,7 @@
 #include "wasapi.h"
 #include "belief.h"
 #include "new_score.h"
+#include "Resynthesis.h"
 
 
 //#define ORCH_PITCH  444  /* assuming that the orch recorded at a=440 */

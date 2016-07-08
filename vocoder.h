@@ -3,7 +3,6 @@
 #define VOCODER
 
 #include "share.c"
-#include "Resynthesis.h"
 
 #define VOC_TOKEN_LEN  4096
 #define VCODE_FREQS  (VOC_TOKEN_LEN/2)
@@ -58,8 +57,6 @@ void read_orchestra_shift();
 void write_orchestra_shift();
 void temp_rewrite_audio();
 void temp_append_audio();
-int read_48khz_raw_audio_data_base(char *directory, AUDIO_FEATURE_LIST *list);
-//void cal_vcode_features(AUDIO_FEATURE_LIST *flist);
 
 //------------------------
 // might want to move these elsewhere along with the #include <stdio.h>

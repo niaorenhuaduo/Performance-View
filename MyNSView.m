@@ -18,10 +18,11 @@
 //#include "Piano.h"
 //#include "PatControl.h"
 #include <dirent.h>
-#include "audio.h"
+
 #include "yin.h"
 #include "dp.h"
 #include "vocoder.h"
+#include "audio.h"
 #include "Resynthesis.h"
 
 
