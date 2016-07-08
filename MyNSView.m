@@ -292,6 +292,7 @@ static void read_features(char *name, AUDIO_FEATURE_LIST *list) {
     list->el = malloc(frames * sizeof(AUDIO_FEATURE));
     while (feof(fp) == 0) {
       fscanf(fp, "%d\t%f\t%f\t%f\n", &af.frame, &af.hz, &af.amp, &af.nominal);
+      if(af.hz == -1 || af.nominal == -1) continue;
       list->el[list->num++] = af;
     }
     
@@ -417,7 +418,7 @@ void resynth_solo_phase_vocoder(AUDIO_FEATURE_LIST database_feature_list) {
       
       int best_prev[saved_feature_list.num];
       for(int i = saved_feature_list.num - 1; i > 0; i--){
-            best_prev[i] = database_feature_list.el[opt_j].frame;
+            best_prev[i] = opt_j; //database_feature_list.el[opt_j].frame;
             opt_j = prev[i][opt_j];
       }
       
