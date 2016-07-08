@@ -254,7 +254,7 @@ display_range_string() {
     
     
     strcpy(name, audio_data_dir);
-    strcpy(name, current_examp);
+    strcat(name, current_examp);
     strcat(name, "_48k.raw");
     
     new_create_raw_from_48k(name);
