@@ -360,8 +360,6 @@ void resynth_solo_phase_vocoder() {
       strcat(name,current_examp);
       strcat(name,".feature");
     
-      return;
-    
 
       AUDIO_FEATURE_LIST database_feature_list;
       read_features(name, &database_feature_list);

@@ -1180,6 +1180,16 @@
                             <action selector="CalculateFeatures:" target="Voe-Tx-rLC" id="WPt-Bg-jje"/>
                         </connections>
                     </button>
+                    <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="nRw-kA-JQs">
+                        <rect key="frame" x="718" y="63" width="127" height="32"/>
+                        <buttonCell key="cell" type="push" title="Re-synthesize" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="gyp-l6-aHU">
+                            <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
+                            <font key="font" metaFont="system"/>
+                        </buttonCell>
+                        <connections>
+                            <action selector="ReSynthesize:" target="Voe-Tx-rLC" id="by9-JO-TbE"/>
+                        </connections>
+                    </button>
                 </subviews>
             </view>
             <connections>

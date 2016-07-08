@@ -54,5 +54,6 @@ typedef struct {
 
 
 
+
 MyNSView *view_self;
 

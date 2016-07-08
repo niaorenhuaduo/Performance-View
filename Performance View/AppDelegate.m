@@ -701,6 +701,10 @@ static int nav_increment;
     write_features(name);
 }
 
+- (IBAction)ReSynthesize:(id)sender {
+    resynth_solo_phase_vocoder();
+}
+
 
 void
 init_incs() {

@@ -143,6 +143,8 @@ extern int test_audio_wave;
 extern int last_analyzed_frame;
 extern int first_analyzed_frame;
 extern int frame_resolution;
+void resynth_solo_phase_vocoder();
+
 
 
 

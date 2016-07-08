@@ -272,7 +272,7 @@ display_range_string() {
     [view_self displaySpect];
     
     //resynth_solo(48000);
-    resynth_solo_phase_vocoder();
+    //resynth_solo_phase_vocoder(); //press button in main menu instead
     display_range_string();
     display_take_string();
     
