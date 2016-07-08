@@ -537,6 +537,7 @@ static void append_features(char *name, AUDIO_FEATURE_LIST *list) {
     fclose(fp);
 }
 
+#define MAX_DATA_NUM 10
 int
 read_48khz_raw_audio_data_base(char *directory, AUDIO_FEATURE_LIST *list) {
   FILE *fp;
@@ -551,16 +552,25 @@ read_48khz_raw_audio_data_base(char *directory, AUDIO_FEATURE_LIST *list) {
   char feature_file_name[200];
   char audio_file_name_stub[200];
   char audio_file_name[200];
+  
+  int len[MAX_DATA_NUM];
+  int cnt = 0;
+  
   if ((dir = opendir (directory)) == NULL) return(0);
   
   while ((ent = readdir (dir)) != NULL) {
     if(strstr(ent->d_name, "_48k.raw") != 0){
-    
       strcpy(audio_file_name, directory);
       strcat(audio_file_name, ent->d_name);
       fp = fopen(audio_file_name,"rb");
       if (fp == NULL) { printf("couldn't read %s\n",ent->d_name); exit(0); }
-      while (feof(fp) == 0) total +=  fread(temp,1,READ_TEST_SIZE,fp);
+      int cur_total = 0;
+      while (feof(fp) == 0) cur_total +=  fread(temp,1,READ_TEST_SIZE,fp);
+      
+      int temp_num_frame = (cur_total/BYTES_PER_SAMPLE)/SAMPLES_PER_FRAME;
+      cur_total = temp_num_frame*SAMPLES_PER_FRAME*BYTES_PER_SAMPLE;
+      len[cnt++] = cur_total;
+      total += cur_total;
       fclose(fp);
       }
   }
@@ -573,18 +583,17 @@ read_48khz_raw_audio_data_base(char *directory, AUDIO_FEATURE_LIST *list) {
   if (vring.audio == 0) { printf("couldn't alloc %d bytes in read_48khz_raw_audio_name\n",total); return(0);  }
   dir = opendir (directory);
  
-  int file_frame_len = 0;
+  int offset = 0;
+  cnt = 0;
   while ((ent = readdir (dir)) != NULL) {
     if(strstr(ent->d_name, "_48k.raw") != 0){
       strcpy(audio_file_name, directory);
       strcat(audio_file_name, ent->d_name);
       fp = fopen(audio_file_name,"rb");
-
-      while (feof(fp) == 0) file_frame_len +=  fread(temp,1,READ_TEST_SIZE,fp);
-      fseek(fp,0,SEEK_SET);
-      fread(vring.audio,1,file_frame_len,fp);
+      int file_frame_len = len[cnt++];
+      fread(vring.audio+offset,1,file_frame_len,fp);
       fclose(fp);
-      file_frame_len = 0;
+      offset += file_frame_len;
   
       strcpy(audio_file_name_stub, ent->d_name);
       audio_file_name_stub[strlen(audio_file_name_stub) - 8] = 0; //remove "_48k.raw"
