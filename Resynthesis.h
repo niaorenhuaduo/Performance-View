@@ -31,7 +31,7 @@ typedef struct {
 } AUDIO_FEATURE_LIST;
 
 void prep_cal_feature(int frame, unsigned char* audioname);
-AUDIO_FEATURE cal_feature(unsigned char *ptr, float hz0);
+//AUDIO_FEATURE cal_feature(unsigned char *ptr, float hz0);
 void write_features(char *name);
 
 #endif /* Resynthesis_h */
