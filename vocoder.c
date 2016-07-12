@@ -4798,6 +4798,41 @@ set_vcode_rate(float rate) {
   vring.rate = rate;
 }
 
+static float cal_pitch_yin(unsigned char *ptr, float hz0) {
+    int buffer_length;
+    buffer_length = (float) 6*YIN_SAMPLING_RATE/hz0;
+    Yin yin;
+    Yin_init(&yin, buffer_length, 0.6);
+    return(Yin_getPitch(&yin, ptr, hz0));
+}
+
+
+static float cal_amp(unsigned char *ptr) {
+    float amp;
+    samples2floats(ptr, data_48k, FREQDIM);
+    amp = 0;
+    for (int i = 0; i < FREQDIM; i++) { //sum of squares
+        amp += data_48k[i]*data_48k[i]*coswindow_1024[i];
+    }
+    return(sqrtf(amp/FREQDIM));
+}
+
+static //calculate feature vector for a given frame of audio
+AUDIO_FEATURE cal_feature(int offset, float hz0) {
+    AUDIO_FEATURE af;
+    unsigned char *ptr = vring.audio + offset;
+    af.hz = cal_pitch_yin(ptr, hz0);
+    af.amp = cal_amp(ptr);
+    printf("\nhz estimate %f", af.hz);
+    return af;
+}
+
+float temp_cal_pitch(int offset, float hz0){
+      unsigned char *ptr = vring.audio + offset;
+      float result = cal_pitch_yin(ptr, hz0);
+      return result;
+}
+
 void write_features(char *name) {
     
     FILE *fp;
@@ -4820,7 +4855,8 @@ void write_features(char *name) {
         else {
             hz0 = (int) (pow(2,((midi - 69)/12.0)) * 440);
             offset = frame_8k * SKIPLEN * BYTES_PER_SAMPLE;
-            af = cal_feature(audiodata+offset, hz0);
+            //af = cal_feature(audiodata+offset, hz0);
+            af = cal_feature(i*HOP_LEN*BYTES_PER_SAMPLE, hz0);
             fprintf(fp,"%d\t%f\t%f\t%f\n", i, af.hz, af.amp, hz0);
         }
         
@@ -4828,5 +4864,4 @@ void write_features(char *name) {
     
     fclose(fp);
 }
-
 

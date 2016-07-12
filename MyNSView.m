@@ -418,11 +418,12 @@ void resynth_solo_phase_vocoder(AUDIO_FEATURE_LIST database_feature_list) {
       
       int best_prev[saved_feature_list.num];
       for(int i = saved_feature_list.num - 1; i > 0; i--){
-            best_prev[i] = opt_j; //database_feature_list.el[opt_j].frame;
+            best_prev[i] = opt_j;
             opt_j = prev[i][opt_j];
       }
       
       for(int i = 1; i < saved_feature_list.num; i++){ //i is the frame index of test data
+            printf("nominal pitch (target)/3:%f \tnominal pitch (database):%f \t",saved_feature_list.el[i].nominal/3 , database_feature_list.el[best_prev[i]].nominal);
             vcode_synth_frame_var(best_prev[i]);
       }
 }
@@ -791,7 +792,13 @@ void calc_max_bin(int startpos, int endpos, int fbin) {
         }
     }
     for (int j = startpos; j < endpos; j++) {
-        inst_fbin[j] = calc_inst_freq_bin_yin(j, inst_fbin[j]); //calculate instantaneous pitch using selected bin
+        //inst_fbin[j] = calc_inst_freq_bin_yin(j, inst_fbin[j]); //calculate instantaneous pitch using selected bin
+        
+        int index = (float)j * (SKIPLEN * 6) / HOP_LEN;
+        int midi = binary_search(firstnote, lastnote, j);
+        int hz0 = (int) (pow(2,((midi - 69)/12.0)) * 440);
+        inst_freq[j] = temp_cal_pitch(index*HOP_LEN*BYTES_PER_SAMPLE, hz0);
+        inst_fbin[j] = hz2omega(inst_freq[j]);
         //inst_fbin[j] = calc_inst_freq_bin(j, inst_fbin[j]); //calculate instantaneous pitch using selected bin
     }
 }

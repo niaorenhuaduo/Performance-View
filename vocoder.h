@@ -57,6 +57,7 @@ void read_orchestra_shift();
 void write_orchestra_shift();
 void temp_rewrite_audio();
 void temp_append_audio();
+float temp_cal_pitch(int offset, float hz0);
 
 //------------------------
 // might want to move these elsewhere along with the #include <stdio.h>

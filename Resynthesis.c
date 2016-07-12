@@ -9,34 +9,34 @@
 #include "Resynthesis.h"
 #include "global.h"
 
+//
+//float cal_pitch_yin(unsigned char *ptr, float hz0) {
+//    int buffer_length;
+//    buffer_length = 5*((float) YIN_SAMPLING_RATE/hz0);
+//    Yin yin;
+//    Yin_init(&yin, buffer_length, 0.6);
+//    return(Yin_getPitch(&yin, ptr, hz0));
+//}
+//
+//
+//float cal_amp(unsigned char *ptr) {
+//    float amp;
+//    samples2floats(ptr, data_48k, FREQDIM);
+//    amp = 0;
+//    for (int i = 0; i < FREQDIM; i++) { //sum of squares
+//        amp += data_48k[i]*data_48k[i]*coswindow_1024[i];
+//    }
+//    return(sqrtf(amp/FREQDIM));
+//}
 
-float cal_pitch_yin(unsigned char *ptr, float hz0) {
-    int buffer_length;
-    buffer_length = 5*((float) SAMPLE_SR/hz0);
-    Yin yin;
-    Yin_init(&yin, buffer_length, 0.6);
-    return(Yin_getPitch(&yin, ptr, hz0));
-}
 
-
-float cal_amp(unsigned char *ptr) {
-    float amp;
-    samples2floats(ptr, data_48k, FREQDIM);
-    amp = 0;
-    for (int i = 0; i < FREQDIM; i++) { //sum of squares
-        amp += data_48k[i]*data_48k[i]*coswindow_1024[i];
-    }
-    return(sqrtf(amp/FREQDIM));
-}
-
-
-//calculate feature vector for a given frame of audio
-AUDIO_FEATURE cal_feature(unsigned char *ptr, float hz0) {
-    AUDIO_FEATURE af;
-    af.hz = cal_pitch_yin(ptr, hz0);
-    af.amp = cal_amp(ptr);
-    return af;
-}
+////calculate feature vector for a given frame of audio
+//AUDIO_FEATURE cal_feature(unsigned char *ptr, float hz0) {
+//    AUDIO_FEATURE af;
+//    af.hz = cal_pitch_yin(ptr, hz0);
+//    af.amp = cal_amp(ptr);
+//    return af;
+//}
 
 int binary_search(int firstnote, int lastnote, int search)
 //finds which midi pitch the search frame belongs to
@@ -87,7 +87,7 @@ void prep_cal_feature(int frame, unsigned char* audioname) {
     midi = binary_search(first, last, frame);
     hz0 = (int) (pow(2,((midi - 69)/12.0)) * 440);
     
-    cal_feature(ptr, hz0);
+    //cal_feature(ptr, hz0);
 }
 
 //dp: do not allow jump when source is changing note. must use entire change of note

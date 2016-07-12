@@ -5,7 +5,7 @@
 #include "share.h"
 #include "math.h"
 
-#define YIN_SAMPLING_RATE 8000
+#define YIN_SAMPLING_RATE 48000//8000
 #define YIN_DEFAULT_THRESHOLD 0.15
 
 /**

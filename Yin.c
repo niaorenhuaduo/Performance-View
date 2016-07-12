@@ -59,15 +59,15 @@ int16_t Yin_absoluteThreshold(Yin *yin, int hz_hat){
     int16_t tau;
     int hz_max = (int) hz_hat * pow(2,(1.7/12.0));
     int hz_min = (int) hz_hat * pow(2,(-1.7/12.0));
-    int16_t tau_max = (int16_t) ceilf((float) SAMPLE_SR / hz_min);
-    int16_t tau_min = (int16_t) floorf((float) SAMPLE_SR / hz_max);
+    int16_t tau_max = (int16_t) ceilf((float) YIN_SAMPLING_RATE / hz_min);
+    int16_t tau_min = (int16_t) floorf((float) YIN_SAMPLING_RATE / hz_max);
     
     /* Search through the array of cumulative mean values, and look for ones that are over the threshold
      * The first two positions in yinBuffer are always so start at the third (index 2) */
-    //for (tau = 2; tau < yin->halfBufferSize ; tau++) {
-    for (tau = tau_min; tau < tau_max; tau++) {
-        if (yin->yinBuffer[tau] < yin->threshold) {
-            while (tau + 1 < yin->halfBufferSize && yin->yinBuffer[tau + 1] < yin->yinBuffer[tau]) {
+    for (tau = 2; tau < yin->halfBufferSize ; tau++) {
+        if (yin->yinBuffer[tau] < yin->threshold && tau >= tau_min) {
+            //while (tau + 1 < yin->halfBufferSize && yin->yinBuffer[tau + 1] < yin->yinBuffer[tau]) {
+            while (tau < tau_max && yin->yinBuffer[tau + 1] < yin->yinBuffer[tau]) {
                 tau++;
             }
             /* found tau, exit loop and return
