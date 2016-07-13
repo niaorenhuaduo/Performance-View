@@ -717,6 +717,32 @@ static int nav_increment;
     resynth_solo_phase_vocoder(database_feature_list);
 }
 
+- (IBAction)CountIntervals:(id)sender {
+    char name[200];
+    int transp = 0; //for now
+    strcpy(name, user_dir);
+    strcat(name, "python/");
+    strcat(name,player);
+    strcat(name, "_");
+    strcat(name,current_examp);
+    strcat(name, ".intervals");
+
+    count_intervals(name, transp);
+    /* to count intervals in database
+    strcpy(name, user_dir);
+    strcat(name, "python/intervals");
+    strcpy(directory, user_dir);
+    strcat(directory, "database/");
+    if(count_database_intervals(directory, name) == 0){
+        NSLog(@"Problems in counting intervals");
+        return;
+    }
+     */
+}
+
+
+
+
 
 void
 init_incs() {

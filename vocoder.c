@@ -607,7 +607,66 @@ read_48khz_raw_audio_data_base(char *directory, AUDIO_FEATURE_LIST *list) {
   return(1);
 }
 
- 
+
+int
+count_database_intervals(char *directory, char *map_file_name) {
+    int **map, frame, hz, prev_hz, hz_range = 128;
+    float freq, amp, nominal, prev = -1;
+    FILE *fp, *mp;
+    //find .tps file
+    DIR *dir;
+    struct dirent *ent;
+    char feature_file_name[200];
+    
+    mp = fopen(map_file_name, "w");
+    if (mp == NULL) { printf("can't open %s\n",map_file_name); return(0); }
+    
+    if ((dir = opendir (directory)) == NULL) return(0);
+    
+    while ((ent = readdir (dir)) != NULL) {
+        if(strstr(ent->d_name, ".feature") != 0){
+            strcpy(feature_file_name, directory);
+            strcat(feature_file_name, ent->d_name);
+            fp = fopen(feature_file_name,"r");
+            if (fp == NULL) { printf("couldn't read %s\n",ent->d_name); exit(0); }
+            fscanf(fp,"Total number of frames: %d\n",&frames);
+            while (feof(fp) == 0) {
+                fscanf(fp, "%d\t%f\t%f\t%f\n", &frame, &freq, &amp, &nominal);
+                if(freq == -1 || nominal == -1) continue;
+                if (nominal != prev) {
+                    hz = (int) nominal;
+                    prev_hz = (int) prev;
+                    if (prev != -1) fprintf(mp, "%d\t%d\n", prev_hz, hz);
+                }
+                prev = nominal;
+            }
+            fclose(fp);
+        }
+    }
+    closedir (dir);
+    fclose(mp);
+
+    return(1);
+}
+
+int count_intervals(char *interval_file_name, int transp) {
+    int curr, prev;
+    FILE *mp;
+    mp = fopen(interval_file_name, "w");
+    if (mp == NULL) { printf("can't open %s\n",interval_file_name); return(0); }
+    
+    prev = score.solo.note[firstnote].snd_notes.snd_nums[0];
+    for (int j = firstnote+1; j < lastnote; j++) {
+        curr = score.solo.note[j].snd_notes.snd_nums[0]; //current midi pitch
+        if (curr == prev) continue;
+        fprintf(mp, "%d\t%d\n", prev, curr);
+        prev = curr;
+    }
+    fclose(mp);
+}
+
+
+
 void
 orchestra_audio_info(unsigned char **ptr, int *samps) {
   *ptr = vring.audio;

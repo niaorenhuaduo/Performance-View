@@ -252,8 +252,10 @@ float compare_feature(AUDIO_FEATURE ff1, AUDIO_FEATURE ff2) {
 }
 
 static float frame_feature_dist(AUDIO_FEATURE ff1, AUDIO_FEATURE ff2){
-      float dist = fabsf(ff1.hz - ff2.hz) + 100*fabsf(ff1.amp - ff2.amp);
-      return dist;
+    float dist;
+    if (ff1.amp > 0.001 && ff2.amp > 0.001) dist = fabsf(ff1.hz - ff2.hz) + 100*fabsf(ff1.amp - ff2.amp);
+    else dist = 0.001*fabsf(ff1.hz - ff2.hz) + 100*fabsf(ff1.amp - ff2.amp); //for silent frames, do not care about pitch //correct logic?
+    return dist;
 }
 
 static int find_closest_frame_index(AUDIO_FEATURE f, AUDIO_FEATURE_LIST database){
@@ -826,17 +828,28 @@ add_line_to_inst_pitch(int column, int endpos, int color, int fbin) {
     
     double j, k;
     for (i = column; i < endpos; i++) {
+        if (inst_freq[i] == -1) {
+            inst_fbin[i] = 80; //failed pitch detection: draw it at the top.
+        }
         inst_fbin[i] = hz2omega(inst_freq[i]);
+        int temp = inst_fbin[i];
         [bitmap setPixel:z atX:(i-scroll_pos) y:(SPECT_HT - inst_fbin[i])];
 
     }
     
     //temp: add amplitude to plot
     color = color - 2;
-    z[2] = r = (color&1) ? 255 : 0;
-    z[1] = g = (color&2) ? 255 : 0;
-    z[0]=  b = (color&4) ? 255 : 0;
     for (i = column; i < endpos; i++) {
+        if (inst_amp[i] < 0.001) {
+            z[2] = r = (color&1) ? 255 : 0;
+            z[1] = g = (color&4) ? 255 : 0;
+            z[0]=  b = (color&2) ? 255 : 0;
+        }
+        else {
+            z[2] = r = (color&1) ? 255 : 0;
+            z[1] = g = (color&2) ? 255 : 0;
+            z[0]=  b = (color&4) ? 255 : 0;
+        }
         [bitmap setPixel:z atX:(i-scroll_pos) y:(SPECT_HT - 100*inst_amp[i])];
     }
     

@@ -57,6 +57,7 @@
 
 - (IBAction)CalculateFeatures:(id)sender;
 - (IBAction)ReSynthesize:(id)sender;
+- (IBAction)CountIntervals:(id)sender;
 
 
 -(void)setStatRange:(char *) meas;
