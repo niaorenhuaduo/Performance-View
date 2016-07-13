@@ -254,7 +254,8 @@ float compare_feature(AUDIO_FEATURE ff1, AUDIO_FEATURE ff2) {
 static float frame_feature_dist(AUDIO_FEATURE ff1, AUDIO_FEATURE ff2){
     float dist;
     if (ff1.amp > 0.001 && ff2.amp > 0.001) dist = fabsf(ff1.hz - ff2.hz) + 100*fabsf(ff1.amp - ff2.amp);
-    else dist = 0.001*fabsf(ff1.hz - ff2.hz) + 100*fabsf(ff1.amp - ff2.amp); //for silent frames, do not care about pitch //correct logic?
+    else if(ff1.amp < 0.001 && ff2.amp < 0.001) dist = 100*fabsf(ff1.amp - ff2.amp); //silent frames, do not care about pitch
+    else return 10000;
     return dist;
 }
 
@@ -974,8 +975,10 @@ draw_pitch(int b) {
         calculate_amplitude(s, e);
         
         if (b) add_line_to_visible_pitch(s, e, color, fbin, &beg);
-        if (b) add_line_to_inst_pitch(s, e, color+1, fbin);
         
+        if (midi == 0) continue;
+        
+        if (b) add_line_to_inst_pitch(s, e, color+1, fbin);
         
         
     }
