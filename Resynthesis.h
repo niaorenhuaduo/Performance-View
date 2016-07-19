@@ -28,6 +28,9 @@ typedef struct {
 typedef struct {
     AUDIO_FEATURE* el;
     int num;
+    double mu;
+    double sd;
+    double var;
 } AUDIO_FEATURE_LIST;
 
 void prep_cal_feature(int frame, unsigned char* audioname);

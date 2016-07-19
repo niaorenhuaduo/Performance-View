@@ -153,7 +153,7 @@ void interpolate_freq() {
     int samps_per_frame = SKIPLEN * IO_FACTOR;
     for (int i = first_analyzed_frame; i < last_analyzed_frame - 1; i++) {
         offset1 = first_analyzed_frame * SKIPLEN * IO_FACTOR +(i - first_analyzed_frame) * SKIPLEN * IO_FACTOR;  //8000 k to 48000k
-  //8000 k to 48000k
+        //8000 k to 48000k
         pitch_diff = inst_freq[i+1] - inst_freq[i];
         for (int j = offset1; j < offset1 + samps_per_frame; j++) {
             cumsum_freq[j] = inst_freq[i] + pitch_diff * (float) (j - offset1) / samps_per_frame;
@@ -170,7 +170,7 @@ void cumulative_sum(int sr) {
         if (curr >= 2*PI) curr -= 2*PI*floor(curr/(2*PI));
         cumsum_freq[i] = (float) curr;
         if (i%100 == 0) printf("\n%f", cumsum_freq[i]);
-
+        
         //if (i >= score.solo.note[1].frames * SKIPLEN * IO_FACTOR)printf("\ncumsum freq = %f",  cumsum_freq[i]);
     }
     
@@ -209,10 +209,10 @@ void save_audio_data(){
     
     strcpy(fileName, user_dir);
     strcat(fileName, "output.wav");
-
+    
     FILE *fp = fopen(fileName,"w");
-      WavHeader header;
-
+    WavHeader header;
+    
     header.chunk_id[0] = 'R';
     header.chunk_id[1] = 'I';
     header.chunk_id[2] = 'F';
@@ -238,8 +238,8 @@ void save_audio_data(){
     header.datachunk_id[2] = 't';
     header.datachunk_id[3] = 'a';
     header.datachunk_size = frames * BYTES_PER_FRAME / BYTES_PER_SAMPLE;
-
-
+    
+    
     fwrite(&header, 1, sizeof(WavHeader), fp);
     fwrite(audiodata,1,header.datachunk_size,fp);
     fclose(fp);
@@ -253,182 +253,233 @@ float compare_feature(AUDIO_FEATURE ff1, AUDIO_FEATURE ff2) {
 
 static float frame_feature_dist(AUDIO_FEATURE ff1, AUDIO_FEATURE ff2){
     float dist;
-    if (ff1.amp > 0.001 && ff2.amp > 0.001) dist = fabsf(ff1.hz - ff2.hz) + 100*fabsf(ff1.amp - ff2.amp);
-    else if(ff1.amp < 0.001 && ff2.amp < 0.001) dist = 100*fabsf(ff1.amp - ff2.amp); //silent frames, do not care about pitch
+    if (ff1.amp > 0.001 && ff2.amp > 0.001) dist = fabsf(ff1.hz - ff2.hz) + 10*fabsf(ff1.amp - ff2.amp);
+    else if(ff1.amp < 0.001 && ff2.amp < 0.001) dist = 1000*fabsf(ff1.amp - ff2.amp); //silent frames, do not care about pitch
     else return 10000;
     return dist;
 }
 
 static int find_closest_frame_index(AUDIO_FEATURE f, AUDIO_FEATURE_LIST database){
-      int opt = -1;
-      float dist = HUGE_VAL;
-      
-      AUDIO_FEATURE f1 = f;
-      f1.hz/=3.3;
-      
-      for(int i = 0; i < database.num; i++){
-            AUDIO_FEATURE f2 = database.el[i];
-            if(f2.hz < 0) continue;
-            float new_dist = compare_feature(f1, f2);
-            if(new_dist < dist){
-                  opt = i;
-                  dist = new_dist;
-            }
-      }
-      
-      float hz_opt = database.el[opt].hz;
-      
-      return(opt);
+    int opt = -1;
+    float dist = HUGE_VAL;
+    
+    AUDIO_FEATURE f1 = f;
+    f1.hz/=3.3;
+    
+    for(int i = 0; i < database.num; i++){
+        AUDIO_FEATURE f2 = database.el[i];
+        if(f2.hz < 0) continue;
+        float new_dist = compare_feature(f1, f2);
+        if(new_dist < dist){
+            opt = i;
+            dist = new_dist;
+        }
+    }
+    
+    float hz_opt = database.el[opt].hz;
+    
+    return(opt);
 }
 
-static void read_features(char *name, AUDIO_FEATURE_LIST *list) {
+void transpose_features(char *name, char *new_file, int semitones) {
     
+    int frame;
+    float hz, amp, nominal;
+    
+    FILE *fp, *np;
+    fp = fopen(name, "r");
+    if (fp == NULL) { printf("can't open %s\n",name); return; }
+    np = fopen(new_file, "w");
+    if (np == NULL) { printf("can't open %s\n",new_file); return; }
+    
+    int frames = 0;
+    fscanf(fp,"Total number of frames: %d\n",&frames);
+    fprintf(np,"Total number of frames: %d\n",frames);
+    
+    while (feof(fp) == 0) {
+        fscanf(fp, "%d\t%f\t%f\t%f\n", &frame, &hz, &amp, &nominal);
+        if (nominal != -1) {
+            nominal = floorf(nominal * pow(2, semitones/(float) 12)); //???need to make sure that the nominal pitches match ones computed by program, using floor, not round
+            hz = floorf(hz * pow(2, semitones/(float) 12));
+        }
+        fprintf(np, "%d\t%f\t%f\t%f\n", frame, hz, amp, nominal);
+        
+    }
+    
+    fclose(fp);
+    fclose(np);
+}
+
+static void read_features(char *name, AUDIO_FEATURE_LIST *list, double *mean, double *var, double *sd) {
+    double meansq = 0;
     FILE *fp;
     fp = fopen(name, "r");
     if (fp == NULL) { printf("can't open %s\n",name); return; }
     
-    int frames = 0;
+    int frames = 0, count = 0;
     fscanf(fp,"Total number of frames: %d\n",&frames);
     
     AUDIO_FEATURE af;
     list->num = 0;
     list->el = malloc(frames * sizeof(AUDIO_FEATURE));
     while (feof(fp) == 0) {
-      fscanf(fp, "%d\t%f\t%f\t%f\n", &af.frame, &af.hz, &af.amp, &af.nominal);
-      if(af.hz == -1 || af.nominal == -1) continue;
-      list->el[list->num++] = af;
+        fscanf(fp, "%d\t%f\t%f\t%f\n", &af.frame, &af.hz, &af.amp, &af.nominal);
+        if(af.hz == -1 || af.nominal == -1) continue;
+        list->el[list->num++] = af;
+        count++;
+        *mean += (double) log(af.amp);
+        meansq += (double) pow(log(af.amp), 2);
     }
+    
+    *mean /= (double) count;
+    meansq /= (double) count;
+    *var = meansq - pow(*mean, 2);
+    *sd = sqrt(*var);
     
     fclose(fp);
 }
 
 static int** malloc_int_matrix(int rows, int cols){
-      int **matrix = malloc(rows *sizeof(int*));
-      
-      for(int i = 0; i < rows; i++){
-            matrix[i] = malloc(cols *sizeof(int));
-      }
-      return matrix;
+    int **matrix = malloc(rows *sizeof(int*));
+    
+    for(int i = 0; i < rows; i++){
+        matrix[i] = malloc(cols *sizeof(int));
+    }
+    return matrix;
 }
 
 static float** malloc_float_matrix(int rows, int cols){
-      float ** matrix = malloc(rows *sizeof(float*));
-      
-      for(int i = 0; i < rows; i++){
-            matrix[i] = malloc(cols *sizeof(float));
-      }
-      return matrix;
+    float ** matrix = malloc(rows *sizeof(float*));
+    
+    for(int i = 0; i < rows; i++){
+        matrix[i] = malloc(cols *sizeof(float));
+    }
+    return matrix;
 }
 
 typedef struct{
-      int index;
-      float score;
+    int index;
+    float score;
 } PAIR;
 
 static int cmp_pair(void *ptr1, void *ptr2){
-      PAIR *p1 = (PAIR *)ptr1;
-      PAIR *p2 = (PAIR *)ptr2;
-      if(p1->score < p2->score) return -1;
-      else if(p1->score == p2->score) return 0;
-      else return 1;
+    PAIR *p1 = (PAIR *)ptr1;
+    PAIR *p2 = (PAIR *)ptr2;
+    if(p1->score < p2->score) return -1;
+    else if(p1->score == p2->score) return 0;
+    else return 1;
 }
 
 static void build_best_path(int **best, AUDIO_FEATURE_LIST list, int num){
-      PAIR *p = malloc(list.num *sizeof(PAIR));
-      
-      for(int i = 0; i < list.num; i++){
-            AUDIO_FEATURE f = list.el[i];
-            
-            for(int j = 0; j < list.num; j++){
-                  AUDIO_FEATURE f2 = list.el[j];
-                  PAIR temp;
-                  temp.index = j;
-                  temp.score = frame_feature_dist(f, f2);
-                  p[j] = temp;
-            }
-            qsort(p, list.num, sizeof(PAIR), cmp_pair);
-            
-            for(int j = 0; j < num; j++){
-                  best[i][j] = p[j].index;
-            }
-      }
+    PAIR *p = malloc(list.num *sizeof(PAIR));
+    
+    for(int i = 0; i < list.num; i++){
+        AUDIO_FEATURE f = list.el[i];
+        
+        for(int j = 0; j < list.num; j++){
+            AUDIO_FEATURE f2 = list.el[j];
+            PAIR temp;
+            temp.index = j;
+            temp.score = frame_feature_dist(f, f2);
+            p[j] = temp;
+        }
+        qsort(p, list.num, sizeof(PAIR), cmp_pair);
+        
+        for(int j = 0; j < num; j++){
+            best[i][j] = p[j].index;
+        }
+    }
     free(p);
 }
 
 void resynth_solo_phase_vocoder(AUDIO_FEATURE_LIST database_feature_list) {
-      char target_name[200];
-      strcpy(target_name,audio_data_dir);
-      strcat(target_name,current_examp);
-      strcat(target_name, ".feature");
-      AUDIO_FEATURE_LIST saved_feature_list;
-      read_features(target_name, &saved_feature_list);
-      
-      vcode_init();
-      temp_rewrite_audio();
-      
-      int n_best = 50;
-      float **score = malloc_float_matrix(saved_feature_list.num, database_feature_list.num);
-      int **prev = malloc_int_matrix(saved_feature_list.num, database_feature_list.num);
-      int **best = malloc_int_matrix(database_feature_list.num, n_best);
-      
-      for(int i = 0; i < saved_feature_list.num; i++){
-            for(int j = 0; j < database_feature_list.num; j++){
-                  score[i][j] = (i==0)? 0:HUGE_VAL;
-                  prev[i][j] = -1;
+    char target_name[200];
+    strcpy(target_name,audio_data_dir);
+    strcat(target_name,current_examp);
+    strcat(target_name, ".feature");
+    AUDIO_FEATURE_LIST saved_feature_list;
+    saved_feature_list.mu = 0; saved_feature_list.var = 0; saved_feature_list.sd = 0;
+    read_features(target_name, &saved_feature_list, &saved_feature_list.mu, &saved_feature_list.var, &saved_feature_list.sd);
+    
+    vcode_init();
+    temp_rewrite_audio();
+    
+    int n_best = 50;
+    float **score = malloc_float_matrix(saved_feature_list.num, database_feature_list.num);
+    int **prev = malloc_int_matrix(saved_feature_list.num, database_feature_list.num);
+    int **best = malloc_int_matrix(database_feature_list.num, n_best);
+    
+    for(int i = 0; i < saved_feature_list.num; i++){
+        for(int j = 0; j < database_feature_list.num; j++){
+            score[i][j] = (i==0)? 0:HUGE_VAL;
+            prev[i][j] = -1;
+        }
+    }
+    
+    build_best_path(best, database_feature_list, n_best);
+    
+    float penalty = 100;
+    int trans_interval = 2;
+    float transp_ratio = 3.0;
+    int error_cost = 0;
+    for(int i = 1; i < saved_feature_list.num; i++){
+        AUDIO_FEATURE f1 = saved_feature_list.el[i];
+        f1.hz /= transp_ratio;//kludgy transposition
+        for(int j = 0; j < database_feature_list.num; j++){
+            AUDIO_FEATURE f2 = database_feature_list.el[j];
+            if(f2.nominal == -1 || f2.hz == -1) continue;
+            //if(f2.nominal/(f1.nominal/transp_ratio) > 1.0 || f2.nominal/(f1.nominal/transp_ratio) < .95) {
+            //printf("\n%d did not match %d", (int)f2.nominal, (int)(f1.nominal/transp_ratio));
+            if (fabsf(f2.nominal - f1.nominal/transp_ratio) > 5) {
+                error_cost = 1000;
             }
-      }
-      
-      build_best_path(best, database_feature_list, n_best);
-      
-      float penalty = 100;
-      int trans_interval = 5;
-      for(int i = 1; i < saved_feature_list.num; i++){
-            AUDIO_FEATURE f1 = saved_feature_list.el[i];
-            f1.hz /= 3;//kludgy transposition
-            for(int j = 0; j < database_feature_list.num; j++){
-                  AUDIO_FEATURE f2 = database_feature_list.el[j];
-                  if(f2.nominal == -1 || f2.hz == -1) continue;
-                  float dis = frame_feature_dist(f1, f2);
-                  
-                  if(j > 0 && score[i][j] > score[i-1][j-1] + dis){
-                        score[i][j] = score[i-1][j-1] + dis;
-                        prev[i][j] = j-1;//already fixed? (needs to be fixed, j-1 is the index of feature list but not actually the index of frame)
-                  }
-                  
-                  if(i > trans_interval && f1.nominal != saved_feature_list.el[i - trans_interval].nominal) continue; //no splice during note transition
-                  
-                  if(i < saved_feature_list.num - trans_interval && f1.nominal != saved_feature_list.el[i + trans_interval].nominal) continue;
-                  
-                  for(int jj = 0; jj < n_best; jj++){
-                        int index = best[j][jj];
-                        if(score[i][j] > score[i-1][index] + dis + penalty){
-                              score[i][j] = score[i-1][index] + dis + penalty;
-                              prev[i][j] = index;
-                        }
-                  }
+            else {
+                error_cost = 0;
+                //printf("\n%d matched %d", (int)f2.nominal, (int)(f1.nominal/transp_ratio));
             }
-      }
-      
-      int i = saved_feature_list.num - 1;
-      float opt_score = HUGE_VAL;
-      int opt_j;
-      for(int j = 0; j < database_feature_list.num; j++){
-            if(score[i][j] < opt_score){
-                  opt_score = score[i][j];
-                  opt_j = j;
+            
+            float dis = frame_feature_dist(f1, f2) + error_cost;
+            
+            if(j > 0 && score[i][j] > score[i-1][j-1] + dis){
+                score[i][j] = score[i-1][j-1] + dis;
+                prev[i][j] = j-1;//already fixed? (needs to be fixed, j-1 is the index of feature list but not actually the index of frame)
             }
-      }
-      
-      int best_prev[saved_feature_list.num];
-      for(int i = saved_feature_list.num - 1; i > 0; i--){
-            best_prev[i] = opt_j;
-            opt_j = prev[i][opt_j];
-      }
-      
-      for(int i = 1; i < saved_feature_list.num; i++){ //i is the frame index of test data
-            printf("nominal pitch (target)/3:%f \tnominal pitch (database):%f \t",saved_feature_list.el[i].nominal/3 , database_feature_list.el[best_prev[i]].nominal);
-            vcode_synth_frame_var(best_prev[i]);
-      }
+            
+            if(i > trans_interval && f1.nominal != saved_feature_list.el[i - trans_interval].nominal) continue; //no splice during note transition
+            
+            //if(i < saved_feature_list.num - trans_interval && f1.nominal != saved_feature_list.el[i + trans_interval].nominal) continue;
+            
+            for(int jj = 0; jj < n_best; jj++){
+                int index = best[j][jj];
+                if(score[i][j] > score[i-1][index] + dis + penalty){
+                    score[i][j] = score[i-1][index] + dis + penalty;
+                    prev[i][j] = index;
+                }
+            }
+        }
+    }
+    
+    
+    int i = saved_feature_list.num - 1;
+    float opt_score = HUGE_VAL;
+    int opt_j;
+    for(int j = 0; j < database_feature_list.num; j++){
+        if(score[i][j] < opt_score){
+            opt_score = score[i][j];
+            opt_j = j;
+        }
+    }
+    
+    int best_prev[saved_feature_list.num];
+    for(int i = saved_feature_list.num - 1; i > 0; i--){
+        best_prev[i] = opt_j;
+        opt_j = prev[i][opt_j];
+    }
+    
+    for(int i = 1; i < saved_feature_list.num; i++){ //i is the frame index of test data
+        printf("nominal pitch (target)/3:%f \tnominal pitch (database):%f \t",saved_feature_list.el[i].nominal/transp_ratio , database_feature_list.el[best_prev[i]].nominal);
+        vcode_synth_frame_var(best_prev[i]);
+    }
 }
 
 
@@ -718,14 +769,14 @@ int calc_inst_freq_bin_yin(int pos, int bin) {
     }
     Yin yin;
     float pitch;
-
+    
     Yin_init(&yin, buffer_length, 0.6);
     pitch = Yin_getPitch(&yin, ptr1, hz_hat);
     buffer_length++;
     
     printf("Pitch is found to be %f with buffer length %i and probability %f\n",pitch, buffer_length, Yin_getProbability(&yin) );
     inst_freq[pos] = pitch; //actual instantaneous frequency
-
+    
     inst_bin = hz2omega(inst_freq[pos]);
     return (int) inst_bin;
 }
@@ -835,7 +886,7 @@ add_line_to_inst_pitch(int column, int endpos, int color, int fbin) {
         inst_fbin[i] = hz2omega(inst_freq[i]);
         int temp = inst_fbin[i];
         [bitmap setPixel:z atX:(i-scroll_pos) y:(SPECT_HT - inst_fbin[i])];
-
+        
     }
     
     //temp: add amplitude to plot

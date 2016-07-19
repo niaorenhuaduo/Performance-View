@@ -704,6 +704,7 @@ static int nav_increment;
 }
 
 - (IBAction)ReSynthesize:(id)sender {
+    if (current_examp[0] == '\0') { printf("need to read audio\n"); exit(0); }
     AUDIO_FEATURE_LIST database_feature_list;
     database_feature_list.num = 0;
     database_feature_list.el = malloc(80000*sizeof(AUDIO_FEATURE));
@@ -717,7 +718,12 @@ static int nav_increment;
     resynth_solo_phase_vocoder(database_feature_list);
 }
 
+
+
 - (IBAction)CountIntervals:(id)sender {
+    if (current_examp[0] == '\0') { printf("need to read audio\n"); exit(0); }
+    //if (user[0] == '\0') { printf("need to read audio\n"); exit(0); }
+
     char name[200];
     int transp = 0; //for now
     strcpy(name, user_dir);
@@ -740,8 +746,27 @@ static int nav_increment;
      */
 }
 
-
-
+- (IBAction)TransposeFeatures:(NSButton *)sender {
+    int semitones = -7;
+    char name[200], new_file[200], suffix[3];
+    strcpy(name, user_dir);
+    strcat(name, "database/");
+    strcat(name,current_examp);
+    strcat(name, ".feature");
+    
+    
+    sprintf(suffix, "%d", abs(semitones));
+    
+    strcpy(new_file, user_dir);
+    strcat(new_file, "database/");
+    strcat(new_file,current_examp);
+    strcat(new_file,"_t");
+    if (semitones >= 0) strcat(new_file, "p");
+    else strcat(new_file, "m");
+    strcat(new_file, suffix);
+    strcat(new_file, ".feature");
+    transpose_features(name, new_file, semitones);
+}
 
 
 void

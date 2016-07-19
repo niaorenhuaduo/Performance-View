@@ -146,6 +146,7 @@ extern int frame_resolution;
 void resynth_solo_phase_vocoder();
 int count_database_intervals(char *directory, char *map_file_name);
 int count_intervals(char *name, int transp);
+extern void transpose_features(char *name, char *new_file, int semitones);
 
 
 

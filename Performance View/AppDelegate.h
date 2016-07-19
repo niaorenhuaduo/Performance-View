@@ -100,11 +100,4 @@
 @property (assign) IBOutlet NSPopUpButton *NoteMarkIncOutlet;
 
 
-
-
-
-
-
-
-
 @end
