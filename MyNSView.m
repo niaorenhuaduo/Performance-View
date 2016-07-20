@@ -251,10 +251,20 @@ float compare_feature(AUDIO_FEATURE ff1, AUDIO_FEATURE ff2) {
     return euclid_dist;
 }
 
-static float frame_feature_dist(AUDIO_FEATURE ff1, AUDIO_FEATURE ff2){
+static float frame_feature_dist(AUDIO_FEATURE ff1, AUDIO_FEATURE ff2, AUDIO_FEATURE_LIST target, AUDIO_FEATURE_LIST source){
     float dist;
-    if (ff1.amp > 0.001 && ff2.amp > 0.001) dist = fabsf(ff1.hz - ff2.hz) + 10*fabsf(ff1.amp - ff2.amp);
-    else if(ff1.amp < 0.001 && ff2.amp < 0.001) dist = 1000*fabsf(ff1.amp - ff2.amp); //silent frames, do not care about pitch
+    float amp1, amp2;
+    if (ff1.amp != -1 && ff2.amp != -1) {
+        amp1 = (logf(ff1.amp) - (float)target.mu)/(float)target.sd;
+        amp2 = (logf(ff2.amp) - (float)source.mu)/(float)source.sd;
+    }
+    else {
+        amp1 = ff1.amp;
+        amp2 = ff2.amp;
+    }
+
+    if (ff1.amp > 0.001 && ff2.amp > 0.001) dist = fabsf(ff1.hz - ff2.hz) + 10*fabsf(amp1 - amp2);
+    else if(ff1.amp < 0.001 && ff2.amp < 0.001) dist = 1000*fabsf(amp1 - amp2); //silent frames, do not care about pitch
     else return 10000;
     return dist;
 }
@@ -357,6 +367,16 @@ static float** malloc_float_matrix(int rows, int cols){
     return matrix;
 }
 
+int get_score_transposition(char* name) {
+    int tps;
+    FILE *fp = fopen(name, "r");
+    if (fp == NULL) { printf("\did not find .tps file. Assuming there is no transposition"); return(0); }
+    fscanf(fp,"half_steps_up = %d",&tps);
+    return tps;
+
+}
+
+
 typedef struct{
     int index;
     float score;
@@ -380,7 +400,7 @@ static void build_best_path(int **best, AUDIO_FEATURE_LIST list, int num){
             AUDIO_FEATURE f2 = list.el[j];
             PAIR temp;
             temp.index = j;
-            temp.score = frame_feature_dist(f, f2);
+            temp.score = frame_feature_dist(f, f2, list, list);
             p[j] = temp;
         }
         qsort(p, list.num, sizeof(PAIR), cmp_pair);
@@ -394,11 +414,22 @@ static void build_best_path(int **best, AUDIO_FEATURE_LIST list, int num){
 
 void resynth_solo_phase_vocoder(AUDIO_FEATURE_LIST database_feature_list) {
     char target_name[200];
+    char recons_name[200];
+    
     strcpy(target_name,audio_data_dir);
     strcat(target_name,current_examp);
     strcat(target_name, ".feature");
+    
+    strcpy(recons_name, user_dir);
+    strcat(recons_name, "python/");
+    strcat(recons_name, player);
+    strcat(recons_name, "_");
+    strcat(recons_name, current_examp);
+    strcat(recons_name, ".reconstruction");
+    
     AUDIO_FEATURE_LIST saved_feature_list;
     saved_feature_list.mu = 0; saved_feature_list.var = 0; saved_feature_list.sd = 0;
+
     read_features(target_name, &saved_feature_list, &saved_feature_list.mu, &saved_feature_list.var, &saved_feature_list.sd);
     
     vcode_init();
@@ -419,7 +450,7 @@ void resynth_solo_phase_vocoder(AUDIO_FEATURE_LIST database_feature_list) {
     build_best_path(best, database_feature_list, n_best);
     
     float penalty = 100;
-    int trans_interval = 2;
+    int trans_interval = 1;
     float transp_ratio = 3.0;
     int error_cost = 0;
     for(int i = 1; i < saved_feature_list.num; i++){
@@ -438,7 +469,7 @@ void resynth_solo_phase_vocoder(AUDIO_FEATURE_LIST database_feature_list) {
                 //printf("\n%d matched %d", (int)f2.nominal, (int)(f1.nominal/transp_ratio));
             }
             
-            float dis = frame_feature_dist(f1, f2) + error_cost;
+            float dis = frame_feature_dist(f1, f2, saved_feature_list, database_feature_list) + error_cost;
             
             if(j > 0 && score[i][j] > score[i-1][j-1] + dis){
                 score[i][j] = score[i-1][j-1] + dis;
@@ -475,11 +506,20 @@ void resynth_solo_phase_vocoder(AUDIO_FEATURE_LIST database_feature_list) {
         best_prev[i] = opt_j;
         opt_j = prev[i][opt_j];
     }
+
     
     for(int i = 1; i < saved_feature_list.num; i++){ //i is the frame index of test data
         printf("nominal pitch (target)/3:%f \tnominal pitch (database):%f \t",saved_feature_list.el[i].nominal/transp_ratio , database_feature_list.el[best_prev[i]].nominal);
         vcode_synth_frame_var(best_prev[i]);
     }
+    
+    FILE *fp = fopen(recons_name, "w");
+    
+    for (int i = 1; i < saved_feature_list.num; i++){
+        AUDIO_FEATURE af = database_feature_list.el[best_prev[i]];
+        fprintf(fp,"%d\t%f\t%f\t%f\n", best_prev[i], af.hz, af.amp, af.nominal);
+    }
+    fclose(fp);
 }
 
 

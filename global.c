@@ -122,5 +122,6 @@ PLAYER_LIST player_list;
 INSTRUMENT_LIST instrument_list;
 int spect_wd;
 int current_parse_changed_by_hand=0;
+int tps = 0;
 
 

@@ -4923,13 +4923,18 @@ read_midi_solo_transpose(char *sname, int transp) {
 
 static int
 read_midi_solo(char *sname) {
-  char name[500],tag[500];
+  char name[500],tag[500], tps_name[200];
   FILE *fp; 
   int pitch,vel,i,command,trill=0,ticks;
   RATIONAL r,rr;
   float len,meas;
-
     
+    
+    strcpy(tps_name,audio_data_dir);
+    strcat(tps_name,scoretag);
+    strcat(tps_name, ".tps");
+
+  tps = get_score_transposition(tps_name);
 
   strcpy(name,sname);
   strcat(name,".solo");
@@ -4951,7 +4956,7 @@ read_midi_solo(char *sname) {
     if (feof(fp)) break;
     meas = r.num/ (float) r.den;
     //    if (command != 0x92) { printf("command = %x\n",command); exit(0); }
-    add_solo_event(MIDI_COM, /*NOTE_ON*/command, pitch, meas, vel, r,trill);
+    add_solo_event(MIDI_COM, /*NOTE_ON*/command, pitch+tps, meas, vel, r,trill);
     //        printf("com = %d pitch = %d meas = %f vel = %d r = %d/%d\n",command,pitch,meas,vel,r.num,r.den);
 
   }
