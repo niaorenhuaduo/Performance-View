@@ -705,6 +705,7 @@ static int nav_increment;
 
 - (IBAction)ReSynthesize:(id)sender {
     if (current_examp[0] == '\0') { printf("need to read audio\n"); exit(0); }
+    database_pitch = (int*) calloc (128, sizeof(int)); //store existing intervals here
     AUDIO_FEATURE_LIST database_feature_list;
     database_feature_list.num = 0;
     database_feature_list.el = malloc(80000*sizeof(AUDIO_FEATURE));

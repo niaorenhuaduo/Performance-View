@@ -149,6 +149,7 @@ int count_intervals(char *name, int transp);
 extern void transpose_features(char *name, char *new_file, int semitones);
 int get_score_transposition(char* name);
 extern int tps;
+extern int *database_pitch;
 
 
 

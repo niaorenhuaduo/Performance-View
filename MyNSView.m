@@ -254,20 +254,34 @@ float compare_feature(AUDIO_FEATURE ff1, AUDIO_FEATURE ff2) {
 static float frame_feature_dist(AUDIO_FEATURE ff1, AUDIO_FEATURE ff2, AUDIO_FEATURE_LIST target, AUDIO_FEATURE_LIST source){
     float dist;
     float amp1, amp2;
-    if (ff1.amp != -1 && ff2.amp != -1) {
-        amp1 = (logf(ff1.amp) - (float)target.mu)/(float)target.sd;
-        amp2 = (logf(ff2.amp) - (float)source.mu)/(float)source.sd;
-    }
-    else {
-        amp1 = ff1.amp;
-        amp2 = ff2.amp;
-    }
-
-    if (ff1.amp > 0.001 && ff2.amp > 0.001) dist = fabsf(ff1.hz - ff2.hz) + 10*fabsf(amp1 - amp2);
-    else if(ff1.amp < 0.001 && ff2.amp < 0.001) dist = 1000*fabsf(amp1 - amp2); //silent frames, do not care about pitch
+    if (ff1.amp == -1 || ff2.amp == -1) return 100000;
+    
+    amp1 = (logf(ff1.amp) - (float)target.mu)/(float)target.sd;
+    amp2 = (logf(ff2.amp) - (float)source.mu)/(float)source.sd;
+    
+    if (ff1.amp > 0.001 && ff2.amp > 0.001) return fabsf(ff1.hz - ff2.hz) + 10*fabsf(amp1 - amp2);
+    else if(ff1.amp < 0.001 && ff2.amp < 0.001) return 1000*fabsf(amp1 - amp2); //silent frames, do not care about pitch. returns: about 1000? problem here?
     else return 10000;
-    return dist;
 }
+
+
+//static float frame_feature_dist(AUDIO_FEATURE ff1, AUDIO_FEATURE ff2, AUDIO_FEATURE_LIST target, AUDIO_FEATURE_LIST source){
+//    float dist;
+//    float amp1, amp2;
+//    if (ff1.amp != -1 && ff2.amp != -1) {
+//        amp1 = (logf(ff1.amp) - (float)target.mu)/(float)target.sd;
+//        amp2 = (logf(ff2.amp) - (float)source.mu)/(float)source.sd;
+//    }
+//    else {
+//        amp1 = ff1.amp;
+//        amp2 = ff2.amp;
+//    }
+//
+//    if (ff1.amp > 0.001 && ff2.amp > 0.001) dist = fabsf(ff1.hz - ff2.hz) + 10*fabsf(amp1 - amp2);
+//    else if(ff1.amp < 0.001 && ff2.amp < 0.001) dist = 1000*fabsf(amp1 - amp2); //silent frames, do not care about pitch
+//    else return 100000;
+//    return dist;
+//}
 
 static int find_closest_frame_index(AUDIO_FEATURE f, AUDIO_FEATURE_LIST database){
     int opt = -1;
@@ -333,7 +347,7 @@ static void read_features(char *name, AUDIO_FEATURE_LIST *list, double *mean, do
     list->num = 0;
     list->el = malloc(frames * sizeof(AUDIO_FEATURE));
     while (feof(fp) == 0) {
-        fscanf(fp, "%d\t%f\t%f\t%f\n", &af.frame, &af.hz, &af.amp, &af.nominal);
+        fscanf(fp, "%d\t%f\t%f\t%d\n", &af.frame, &af.hz, &af.amp, &af.nominal);
         if(af.hz == -1 || af.nominal == -1) continue;
         list->el[list->num++] = af;
         count++;
@@ -435,7 +449,7 @@ void resynth_solo_phase_vocoder(AUDIO_FEATURE_LIST database_feature_list) {
     vcode_init();
     temp_rewrite_audio();
     
-    int n_best = 50;
+    int n_best = 100;
     float **score = malloc_float_matrix(saved_feature_list.num, database_feature_list.num);
     int **prev = malloc_int_matrix(saved_feature_list.num, database_feature_list.num);
     int **best = malloc_int_matrix(database_feature_list.num, n_best);
@@ -451,39 +465,44 @@ void resynth_solo_phase_vocoder(AUDIO_FEATURE_LIST database_feature_list) {
     
     float penalty = 100;
     int trans_interval = 1;
-    float transp_ratio = 3.0;
-    int error_cost = 0;
+    int transp = -19;
+    float transp_ratio = 3.0; //need to combine these two
+    int bonus;
     for(int i = 1; i < saved_feature_list.num; i++){
         AUDIO_FEATURE f1 = saved_feature_list.el[i];
         f1.hz /= transp_ratio;//kludgy transposition
+//        int found_match = 0;
+//        for(int j = 0; j < database_feature_list.num; j++){
+//            AUDIO_FEATURE f2 = database_feature_list.el[j];
+//
+//            if(f2.hz == -1 || f2.nominal == -1) continue;
+//            if (f1.nominal + transp != f2.nominal && database_pitch[f1.nominal + transp] == 1) continue;
+//            found_match = 1;
+//            break;
+//
+//        }
+        
         for(int j = 0; j < database_feature_list.num; j++){
             AUDIO_FEATURE f2 = database_feature_list.el[j];
-            if(f2.nominal == -1 || f2.hz == -1) continue;
-            //if(f2.nominal/(f1.nominal/transp_ratio) > 1.0 || f2.nominal/(f1.nominal/transp_ratio) < .95) {
-            //printf("\n%d did not match %d", (int)f2.nominal, (int)(f1.nominal/transp_ratio));
-            if (fabsf(f2.nominal - f1.nominal/transp_ratio) > 5) {
-                error_cost = 1000;
-            }
-            else {
-                error_cost = 0;
-                //printf("\n%d matched %d", (int)f2.nominal, (int)(f1.nominal/transp_ratio));
-            }
             
-            float dis = frame_feature_dist(f1, f2, saved_feature_list, database_feature_list) + error_cost;
+            if(f2.hz == -1 || f2.nominal == -1) continue;
+            if (f1.nominal + transp == f2.nominal) bonus = -1000000;
+            else bonus = 0;
+
+            float dis = frame_feature_dist(f1, f2, saved_feature_list, database_feature_list);
+            //if (dis >= 100000) continue;
             
-            if(j > 0 && score[i][j] > score[i-1][j-1] + dis){
-                score[i][j] = score[i-1][j-1] + dis;
-                prev[i][j] = j-1;//already fixed? (needs to be fixed, j-1 is the index of feature list but not actually the index of frame)
+            if(j > 0 && score[i][j] > score[i-1][j-1] + dis + bonus){
+                score[i][j] = score[i-1][j-1] + dis + bonus;
+                prev[i][j] = j-1; //j-1 is the index of feature list but not actually the index of frame)
             }
             
             if(i > trans_interval && f1.nominal != saved_feature_list.el[i - trans_interval].nominal) continue; //no splice during note transition
             
-            //if(i < saved_feature_list.num - trans_interval && f1.nominal != saved_feature_list.el[i + trans_interval].nominal) continue;
-            
             for(int jj = 0; jj < n_best; jj++){
                 int index = best[j][jj];
-                if(score[i][j] > score[i-1][index] + dis + penalty){
-                    score[i][j] = score[i-1][index] + dis + penalty;
+                if(score[i][j] > score[i-1][index] + dis + penalty + bonus){
+                    score[i][j] = score[i-1][index] + dis + penalty + bonus;
                     prev[i][j] = index;
                 }
             }
@@ -501,6 +520,8 @@ void resynth_solo_phase_vocoder(AUDIO_FEATURE_LIST database_feature_list) {
         }
     }
     
+    printf("\nopt_score = %f", opt_score);
+    
     int best_prev[saved_feature_list.num];
     for(int i = saved_feature_list.num - 1; i > 0; i--){
         best_prev[i] = opt_j;
@@ -509,7 +530,7 @@ void resynth_solo_phase_vocoder(AUDIO_FEATURE_LIST database_feature_list) {
 
     
     for(int i = 1; i < saved_feature_list.num; i++){ //i is the frame index of test data
-        printf("nominal pitch (target)/3:%f \tnominal pitch (database):%f \t",saved_feature_list.el[i].nominal/transp_ratio , database_feature_list.el[best_prev[i]].nominal);
+        printf("\nnominal pitch (target)/3:%f \tnominal pitch (database):%f \t",saved_feature_list.el[i].nominal + transp , database_feature_list.el[best_prev[i]].nominal);
         vcode_synth_frame_var(best_prev[i]);
     }
     
@@ -517,7 +538,7 @@ void resynth_solo_phase_vocoder(AUDIO_FEATURE_LIST database_feature_list) {
     
     for (int i = 1; i < saved_feature_list.num; i++){
         AUDIO_FEATURE af = database_feature_list.el[best_prev[i]];
-        fprintf(fp,"%d\t%f\t%f\t%f\n", best_prev[i], af.hz, af.amp, af.nominal);
+        fprintf(fp,"%d\t%f\t%f\t%d\n", best_prev[i], af.hz, af.amp, af.nominal);
     }
     fclose(fp);
 }

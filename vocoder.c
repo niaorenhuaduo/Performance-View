@@ -523,6 +523,7 @@ static void append_features(char *name, AUDIO_FEATURE_LIST *list, double *mean, 
     
     FILE *fp;
     fp = fopen(name, "r");
+    int h = 0;
     if (fp == NULL) { printf("can't open %s\n",name); return; }
     
     int frames = 0;
@@ -530,7 +531,8 @@ static void append_features(char *name, AUDIO_FEATURE_LIST *list, double *mean, 
     
     AUDIO_FEATURE af;
     while (feof(fp) == 0) {
-        fscanf(fp, "%d\t%f\t%f\t%f\n", &af.frame, &af.hz, &af.amp, &af.nominal);
+        fscanf(fp, "%d\t%f\t%f\t%d\n", &af.frame, &af.hz, &af.amp, &af.nominal);
+        if (af.nominal != -1) { database_pitch[af.nominal] = 1; }
         list->el[list->num++] = af;
         if (af.amp != -1) {
             *mean += (double) log(af.amp);
@@ -4921,14 +4923,14 @@ void write_features(char *name) {
         midi = binary_search(firstnote, lastnote, frame_8k);
         if (midi == -1 || midi == -2) { //note out of bounds: -1 if before/after solo, -2 if frame is during a rest
             // should be done in some smarter ways.
-            fprintf(fp,"%d\t%f\t%f\t%f\n", i, -1.0, -1.0, -1.0); //signals unusable frame
+            fprintf(fp,"%d\t%f\t%f\t%d\n", i, -1.0, -1.0, -1); //signals unusable frame
         }
         else {
             hz0 = (int) (pow(2,((midi - 69)/12.0)) * 440);
             offset = frame_8k * SKIPLEN * BYTES_PER_SAMPLE;
             //af = cal_feature(audiodata+offset, hz0);
             af = cal_feature(i*HOP_LEN*BYTES_PER_SAMPLE, hz0);
-            fprintf(fp,"%d\t%f\t%f\t%f\n", i, af.hz, af.amp, hz0);
+            fprintf(fp,"%d\t%f\t%f\t%d\n", i, af.hz, af.amp, midi);
         }
         
     }
