@@ -251,18 +251,31 @@ float compare_feature(AUDIO_FEATURE ff1, AUDIO_FEATURE ff2) {
     return euclid_dist;
 }
 
-static float frame_feature_dist(AUDIO_FEATURE ff1, AUDIO_FEATURE ff2, AUDIO_FEATURE_LIST target, AUDIO_FEATURE_LIST source){
+static float frame_feature_dist_database(AUDIO_FEATURE ff1, AUDIO_FEATURE ff2, AUDIO_FEATURE_LIST target, AUDIO_FEATURE_LIST source){
     float dist;
     float amp1, amp2;
-    if (ff1.amp == -1 || ff2.amp == -1) return 100000;
-    if (ff1.onset == 0 && ff2.onset == 1) return 100000;
+    if (ff1.amp == -1 || ff2.amp == -1) return HUGE_VAL;
     
     amp1 = (logf(ff1.amp) - (float)target.mu)/(float)target.sd;
     amp2 = (logf(ff2.amp) - (float)source.mu)/(float)source.sd;
     
     if (ff1.amp > 0.001 && ff2.amp > 0.001) return fabsf(ff1.hz - ff2.hz) + 10*fabsf(amp1 - amp2);
     else if(ff1.amp < 0.001 && ff2.amp < 0.001) return 1000*fabsf(amp1 - amp2); //silent frames, do not care about pitch. returns: about 1000? problem here?
-    else return 10000;
+    else return HUGE_VAL;
+}
+
+static float frame_feature_dist(AUDIO_FEATURE ff1, AUDIO_FEATURE ff2, AUDIO_FEATURE_LIST target, AUDIO_FEATURE_LIST source){
+    float dist;
+    float amp1, amp2;
+    if (ff1.amp == -1 || ff2.amp == -1) return -1;
+    if (ff1.onset == 0 && ff2.onset == 1) return -1;
+    
+    amp1 = (logf(ff1.amp) - (float)target.mu)/(float)target.sd;
+    amp2 = (logf(ff2.amp) - (float)source.mu)/(float)source.sd;
+    
+    if (ff1.amp > 0.001 && ff2.amp > 0.001) return fabsf(ff1.hz - ff2.hz) + 10*fabsf(amp1 - amp2);
+    else if(ff1.amp < 0.001 && ff2.amp < 0.001) return 1000*fabsf(amp1 - amp2); //silent frames, do not care about pitch. returns: about 1000? problem here?
+    else return -1;
 }
 
 static float frame_feature_dist_continuous(AUDIO_FEATURE ff1, AUDIO_FEATURE ff2, AUDIO_FEATURE_LIST target, AUDIO_FEATURE_LIST source){
@@ -274,9 +287,6 @@ static float frame_feature_dist_continuous(AUDIO_FEATURE ff1, AUDIO_FEATURE ff2,
     amp2 = (logf(ff2.amp) - (float)source.mu)/(float)source.sd;
     
     return fabsf(ff1.hz - ff2.hz) + 10*fabsf(amp1 - amp2); //does this make more sense than the two lines which are commented out?
-    
-    //if (ff1.amp > 0.001 && ff2.amp > 0.001) return fabsf(ff1.hz - ff2.hz) + 10*fabsf(amp1 - amp2);
-    //else return 1000*fabsf(amp1 - amp2); //silent frames, do not care about pitch. returns: about 1000? problem here?
 }
 
 static int find_closest_frame_index(AUDIO_FEATURE f, AUDIO_FEATURE_LIST database){
@@ -410,8 +420,7 @@ static void build_best_path(int **best, AUDIO_FEATURE_LIST list, int num){
             AUDIO_FEATURE f2 = list.el[j];
             PAIR temp;
             temp.index = j;
-            if (i == j+1) temp.score = frame_feature_dist_continuous(f, f2, list, list); //???check this
-            else temp.score = frame_feature_dist(f, f2, list, list);
+            temp.score = frame_feature_dist_database(f, f2, list, list);
             p[j] = temp;
         }
         qsort(p, list.num, sizeof(PAIR), cmp_pair);
@@ -464,7 +473,9 @@ void resynth_solo_phase_vocoder(AUDIO_FEATURE_LIST database_feature_list) {
     int trans_interval = 1;
     int transp = -19;
     float transp_ratio = 3.0; //need to combine these two
-    int bonus;
+    float bonus;
+
+    
     for(int i = 1; i < saved_feature_list.num; i++){
         AUDIO_FEATURE f1 = saved_feature_list.el[i];
         f1.hz /= transp_ratio;//kludgy transposition
@@ -473,7 +484,7 @@ void resynth_solo_phase_vocoder(AUDIO_FEATURE_LIST database_feature_list) {
             AUDIO_FEATURE f2 = database_feature_list.el[j];
             
             if(f2.hz == -1 || f2.nominal == -1) continue;
-            if (f1.nominal + transp == f2.nominal) bonus = -1000000;
+            if (abs(f1.nominal + transp - f2.nominal) < 5) bonus = -1000000;
             else bonus = 0;
             
             /* case where database frames are consecutive */
@@ -488,7 +499,7 @@ void resynth_solo_phase_vocoder(AUDIO_FEATURE_LIST database_feature_list) {
             
             //* case where database frames are not consecutive */
             dis = frame_feature_dist(f1, f2, saved_feature_list, database_feature_list);
-            if (dis >= 100000) continue; //hard constraints defined in frame_feature_dist
+            if (dis == -1) continue; //hard constraints defined in frame_feature_dist
             
             for(int jj = 0; jj < n_best; jj++){
                 int index = best[j][jj];
