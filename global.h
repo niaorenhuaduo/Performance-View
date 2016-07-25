@@ -41,7 +41,7 @@ extern int first_accomp,last_accomp;
 extern char score_title[];
 extern char asio_driver[];
 
-extern void write_features(char *name);
+extern void write_features(char *name, int onset_frames);
 
 extern JN state_hat;  /* current kalman state */
 extern float phrase_start;
@@ -150,6 +150,7 @@ extern void transpose_features(char *name, char *new_file, int semitones);
 int get_score_transposition(char* name);
 extern int tps;
 extern int *database_pitch;
+extern void new_create_raw_from_48k(char *name);
 
 
 

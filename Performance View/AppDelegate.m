@@ -695,16 +695,31 @@ static int nav_increment;
 
 - (IBAction)CalculateFeatures:(id)sender {
     char name[200];
+    char database[200];
     
-    strcpy(name,audio_data_dir);
+    strcpy(name, user_dir);
+    strcat(name, "database_full/");
     strcat(name,current_examp);
-    strcat(name,".feature");
+    strcat(name, "_48k.raw");
     
-    write_features(name);
+    strcpy(database, user_dir);
+    strcat(database, "database_full/");
+    strcat(database,current_examp);
+    strcat(database, ".feature");
+    
+    write_features(database, 3);
+    new_create_raw_from_48k(name);
 }
 
 - (IBAction)ReSynthesize:(id)sender {
     if (current_examp[0] == '\0') { printf("need to read audio\n"); exit(0); }
+    
+    char name[200];
+    strcpy(name,audio_data_dir);
+    strcat(name,current_examp);
+    strcat(name,".feature");
+    write_features(name, 3);
+    
     database_pitch = (int*) calloc (128, sizeof(int)); //store existing intervals here
     AUDIO_FEATURE_LIST database_feature_list;
     database_feature_list.num = 0;

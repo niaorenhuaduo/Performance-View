@@ -22,6 +22,7 @@ typedef struct {
     float amp;
     int frame;
     int nominal;
+    int onset;
     //add other features?
 } AUDIO_FEATURE;
 
@@ -35,7 +36,7 @@ typedef struct {
 
 void prep_cal_feature(int frame, unsigned char* audioname);
 //AUDIO_FEATURE cal_feature(unsigned char *ptr, float hz0);
-void write_features(char *name);
+void write_features(char *name, int onset_frames);
 
 #endif /* Resynthesis_h */
 

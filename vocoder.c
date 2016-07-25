@@ -531,7 +531,7 @@ static void append_features(char *name, AUDIO_FEATURE_LIST *list, double *mean, 
     
     AUDIO_FEATURE af;
     while (feof(fp) == 0) {
-        fscanf(fp, "%d\t%f\t%f\t%d\n", &af.frame, &af.hz, &af.amp, &af.nominal);
+        fscanf(fp, "%d\t%f\t%f\t%d\t%d\n", &af.frame, &af.hz, &af.amp, &af.nominal, &af.onset);
         if (af.nominal != -1) { database_pitch[af.nominal] = 1; }
         list->el[list->num++] = af;
         if (af.amp != -1) {
@@ -624,8 +624,8 @@ read_48khz_raw_audio_data_base(char *directory, AUDIO_FEATURE_LIST *list) {
 
 int
 count_database_intervals(char *directory, char *map_file_name) {
-    int **map, frame, hz, prev_hz, hz_range = 128;
-    float freq, amp, nominal, prev = -1;
+    int **map, frame, hz, prev_hz, hz_range = 128, nominal, onset;
+    float freq, amp, prev = -1;
     FILE *fp, *mp;
     //find .tps file
     DIR *dir;
@@ -645,7 +645,7 @@ count_database_intervals(char *directory, char *map_file_name) {
             if (fp == NULL) { printf("couldn't read %s\n",ent->d_name); exit(0); }
             fscanf(fp,"Total number of frames: %d\n",&frames);
             while (feof(fp) == 0) {
-                fscanf(fp, "%d\t%f\t%f\t%f\n", &frame, &freq, &amp, &nominal);
+                fscanf(fp, "%d\t%f\t%f\t%d\t%d\n", &frame, &freq, &amp, &nominal, &onset);
                 if(freq == -1 || nominal == -1) continue;
                 if (nominal != prev) {
                     hz = (int) nominal;
@@ -4894,8 +4894,9 @@ static //calculate feature vector for a given frame of audio
 AUDIO_FEATURE cal_feature(int offset, float hz0) {
     AUDIO_FEATURE af;
     unsigned char *ptr = vring.audio + offset;
-    af.hz = cal_pitch_yin(ptr, hz0);
     af.amp = cal_amp(ptr);
+    if (af.amp < 0.001) af.hz = hz0;
+    else af.hz = cal_pitch_yin(ptr, hz0);
     printf("\nhz estimate %f", af.hz);
     return af;
 }
@@ -4906,31 +4907,36 @@ float temp_cal_pitch(int offset, float hz0){
     return result;
 }
 
-void write_features(char *name) {
+void write_features(char *name, int onset_frames) {
     
     FILE *fp;
     fp = fopen(name, "w");
     if (fp == NULL) { printf("can't open %s\n",name); return; }
     
     AUDIO_FEATURE af;
-    int start, end, s, e, midi, frame_8k, offset, frames;
+    int start, end, s, e, midi, frame_8k, offset, frames, is_onset = 1, count=0, prev_midi = -1;
     float hz0, abs_time;
     unsigned char *ptr;
     frames = vring.audio_frames;
     fprintf(fp, "Total number of frames: %d\n", frames);
     for (int i = 0; i < frames; i++) {
+        
         frame_8k = i * HOP_LEN / (float) (SKIPLEN * 6); //get corresponding frame index at 8k in order to map it to corresponding MIDI note
         midi = binary_search(firstnote, lastnote, frame_8k);
+        count = (midi!=prev_midi) ? 0 : (count + 1);
+        is_onset = (count < onset_frames)? 1:0;
+        prev_midi = midi;
+        
         if (midi == -1 || midi == -2) { //note out of bounds: -1 if before/after solo, -2 if frame is during a rest
             // should be done in some smarter ways.
-            fprintf(fp,"%d\t%f\t%f\t%d\n", i, -1.0, -1.0, -1); //signals unusable frame
+            fprintf(fp,"%d\t%f\t%f\t%d\t%d\n", i, -1.0, -1.0, -1, is_onset); //signals unusable frame
         }
         else {
             hz0 = (int) (pow(2,((midi - 69)/12.0)) * 440);
             offset = frame_8k * SKIPLEN * BYTES_PER_SAMPLE;
             //af = cal_feature(audiodata+offset, hz0);
             af = cal_feature(i*HOP_LEN*BYTES_PER_SAMPLE, hz0);
-            fprintf(fp,"%d\t%f\t%f\t%d\n", i, af.hz, af.amp, midi);
+            fprintf(fp,"%d\t%f\t%f\t%d\t%d\n", i, af.hz, af.amp, midi, is_onset);
         }
         
     }
