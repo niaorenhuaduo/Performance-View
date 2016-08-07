@@ -100,6 +100,7 @@
 		1867FB861D1B160300F134BC /* Yin.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Yin.h; sourceTree = "<group>"; };
 		1867FB881D21991E00F134BC /* Resynthesis.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = Resynthesis.c; sourceTree = "<group>"; };
 		1867FB891D21991E00F134BC /* Resynthesis.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Resynthesis.h; sourceTree = "<group>"; };
+		18CF30E01D57CFA100C7117E /* gsl */ = {isa = PBXFileReference; lastKnownFileType = folder; name = gsl; path = ../../../../usr/local/include/gsl; sourceTree = "<group>"; };
 		18D1D7221D5084730099C041 /* normal_cdf.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = normal_cdf.c; sourceTree = "<group>"; };
 		18D1D7231D5084730099C041 /* normal_cdf.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = normal_cdf.h; sourceTree = "<group>"; };
 		18D1D7251D566C4B0099C041 /* polifitgsl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = polifitgsl.h; sourceTree = "<group>"; };
@@ -415,6 +416,7 @@
 		8EF0A8401C09FC26008FCA2C /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				18CF30E01D57CFA100C7117E /* gsl */,
 				8EF0A8411C09FC26008FCA2C /* Cocoa.framework */,
 				8EF0A8601C09FC26008FCA2C /* XCTest.framework */,
 				8EF0A8431C09FC26008FCA2C /* Other Frameworks */,
@@ -521,7 +523,7 @@
 		8EF0A8361C09FC26008FCA2C /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0510;
+				LastUpgradeCheck = 0730;
 				ORGANIZATIONNAME = craphael;
 				TargetAttributes = {
 					8EF0A85E1C09FC26008FCA2C = {
@@ -716,6 +718,7 @@
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu99;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
@@ -779,7 +782,14 @@
 				GCC_PREFIX_HEADER = "Performance View/Performance View-Prefix.pch";
 				"HEADER_SEARCH_PATHS[arch=*]" = /usr/local/include;
 				INFOPLIST_FILE = "Performance View/Performance View-Info.plist";
+				OTHER_LDFLAGS = (
+					"-I/usr/local/include",
+					"-L/usr/local/lib",
+					"-lgsl",
+					"-lgslcblas",
+				);
 				"PRIVATE_HEADERS_FOLDER_PATH[sdk=*]" = /usr/local/include/;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.music-plus-one.${PRODUCT_NAME:rfc1034identifier}";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				WRAPPER_EXTENSION = app;
 			};
@@ -794,7 +804,14 @@
 				GCC_PREFIX_HEADER = "Performance View/Performance View-Prefix.pch";
 				"HEADER_SEARCH_PATHS[arch=*]" = /usr/local/include;
 				INFOPLIST_FILE = "Performance View/Performance View-Info.plist";
+				OTHER_LDFLAGS = (
+					"-I/usr/local/include",
+					"-L/usr/local/lib",
+					"-lgsl",
+					"-lgslcblas",
+				);
 				"PRIVATE_HEADERS_FOLDER_PATH[sdk=*]" = /usr/local/include/;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.music-plus-one.${PRODUCT_NAME:rfc1034identifier}";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				WRAPPER_EXTENSION = app;
 			};
@@ -816,6 +833,7 @@
 					"$(inherited)",
 				);
 				INFOPLIST_FILE = "Performance ViewTests/Performance ViewTests-Info.plist";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.music-plus-one.${PRODUCT_NAME:rfc1034identifier}";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				TEST_HOST = "$(BUNDLE_LOADER)";
 				WRAPPER_EXTENSION = xctest;
@@ -834,6 +852,7 @@
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "Performance View/Performance View-Prefix.pch";
 				INFOPLIST_FILE = "Performance ViewTests/Performance ViewTests-Info.plist";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.music-plus-one.${PRODUCT_NAME:rfc1034identifier}";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				TEST_HOST = "$(BUNDLE_LOADER)";
 				WRAPPER_EXTENSION = xctest;
