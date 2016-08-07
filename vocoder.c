@@ -34,8 +34,6 @@
 //#define ORCH_PITCH  444  /* assuming that the orch recorded at a=440 */
 #define ORCH_PITCH  440 //442  /* assuming that the orch recorded at a=440 */
 
-
-
 //CF:  a complex number
 typedef struct {
     float modulus;
@@ -519,6 +517,8 @@ read_48khz_raw_audio_name(char *name) {
     return(1);
 }
 
+
+
 static void append_features(char *name, AUDIO_FEATURE_LIST *list, double *mean, double *meansq, int *framecount) {
     
     FILE *fp;
@@ -535,9 +535,10 @@ static void append_features(char *name, AUDIO_FEATURE_LIST *list, double *mean, 
         if (af.nominal != -1) { database_pitch[af.nominal] = 1; }
         list->el[list->num++] = af;
         if (af.amp != -1) {
-            *mean += (double) log(af.amp);
-            *meansq += (double) pow(log(af.amp), 2);
+            *mean += (double) logf(af.amp);
+            *meansq += (double) powf(logf(af.amp), 2);
             *framecount += 1;
+            add_amplitude_elem(list, af.nominal, af.amp);
         }
     }
     
@@ -606,7 +607,7 @@ read_48khz_raw_audio_data_base(char *directory, AUDIO_FEATURE_LIST *list) {
             offset += file_frame_len;
             
             strcpy(audio_file_name_stub, ent->d_name);
-            audio_file_name_stub[strlen(audio_file_name_stub) - 8] = 0; //remove "_48k.raw"
+            audio_file_name_stub[strlen(audio_file_name_stub) - 8] = 0;
             strcpy(feature_file_name , directory);
             strcat(feature_file_name , audio_file_name_stub);
             strcat(feature_file_name, ".feature");
@@ -617,6 +618,7 @@ read_48khz_raw_audio_data_base(char *directory, AUDIO_FEATURE_LIST *list) {
     grand_meansq /= (double) total_frames;
     list->var = grand_meansq - pow(list->mu, 2);
     list->sd = sqrt(list->var);
+    cal_amplitude_dist(list);
     closedir (dir);
     return(1);
 }
@@ -2377,11 +2379,11 @@ is_near_mmo_tap(float f) {
 #define MAX_STRETCH_SAMPS  (2*VOC_TOKEN_LEN)
 
 static void
-vcode_two_polar(int lo, float f, VCODE_ELEM *v1, VCODE_ELEM *v2) {
+vcode_two_polar(int lo, float f, VCODE_ELEM *v1, VCODE_ELEM *v2, float pv_ratio) {
     float prate,orig[MAX_STRETCH_SAMPS],resamp[VOC_TOKEN_LEN + SAMPS_PER_FRAME];
     int orig_num,resamp_num,j;
     
-    prate = orch_pitch / 440.;             //CF:  resample audio if we want to change the pitch
+    prate = pv_ratio * orch_pitch / 440.;             //CF:  resample audio if we want to change the pitch
     resamp_num = VOC_TOKEN_LEN + SAMPS_PER_FRAME;
     //each frame has VOC_TOKEN_LEN samples but the shift is SAMPLES_PER_FRAME so this is the
     // the number of samples needed for two successive overlapping Fourier transforms
@@ -2401,7 +2403,7 @@ vcode_two_polar(int lo, float f, VCODE_ELEM *v1, VCODE_ELEM *v2) {
 
 //CF:  make a new grain
 static void
-pv_new_grain(float f, float *sound) {
+pv_new_grain(float f, float *sound, float pv_ratio) {
     VCODE_ELEM new[VOC_TOKEN_LEN/2+1];
     int i,j,w;
     int lo,hi;
@@ -2428,7 +2430,7 @@ pv_new_grain(float f, float *sound) {
     else
         if (is_near_mmo_tap(f) == 0) {
             //      printf("near tap\n");
-            vcode_two_polar(lo, f, v1,v2);
+            vcode_two_polar(lo, f, v1,v2,pv_ratio);
             /*      vcode_polar(lo,v1);
              vcode_polar(hi,v2); */
         } //CF:  gets the spectra of both adjacent audio frames
@@ -2474,7 +2476,7 @@ pv_new_grain(float f, float *sound) {
 
 
 static void
-phase_lock_new_grain(float f, float *sound) {
+phase_lock_new_grain(float f, float *sound, float pv_ratio) {
     float sound1[VOC_TOKEN_LEN],sound2[VOC_TOKEN_LEN];
     float mod1,phi1,mod2,phi2,p,q,prate,a,b,pp,qq,ph_diff;  // not really right length
     float phase_diff[VOC_TOKEN_LEN];
@@ -2504,7 +2506,7 @@ phase_lock_new_grain(float f, float *sound) {
         /*                           vcode_polar(lo,v1);
          vcode_polar(hi,v2);         */
         p = 1; q = 0;
-        vcode_two_polar(lo, f, v1,v2);
+        vcode_two_polar(lo, f, v1,v2,pv_ratio);
     }
     
     /*#ifdef PRE_VOCODED_AUDIO
@@ -2708,8 +2710,8 @@ vcode_synth_frame_rate() {
     if (((int) f) >= vring.audio_frames-20) f = vring.audio_frames-20;
     /* 20 of course is right but 2 causes a seg fault.  might want to figure this out at some point */
     
-    if (vring.rate < .3)  pv_new_grain(f,sound);  /* straight phase vocoding */
-    else  phase_lock_new_grain(f,sound);  /* phase-locking phase vocoding */
+    if (vring.rate < .3)  pv_new_grain(f,sound, 1);  /* straight phase vocoding */
+    else  phase_lock_new_grain(f,sound, 1);  /* phase-locking phase vocoding */
     //CF:  now we have one new grain.
     //CF:  Each output frame is a weighted combination of the latest 4 (HOP) grains.
     //CF:  We use a clever circular buffer structure to compute this efficiently...
@@ -2745,7 +2747,7 @@ vcode_synth_frame_rate() {
 
 
 void
-vcode_synth_frame_var(int cur_frame) {
+vcode_synth_frame_var(int cur_frame, float pv_ratio) {
     VCODE_ELEM new[VOC_TOKEN_LEN/2+1];
     int i,j,w;
     float sound[VOC_TOKEN_LEN],f,frame_secs,fsolo[HOP_LEN],forch[HOP_LEN],t1,t2;
@@ -2770,8 +2772,8 @@ vcode_synth_frame_var(int cur_frame) {
     if (((int) f) >= vring.audio_frames-20) f = vring.audio_frames-20;
     /* 20 of course is right but 2 causes a seg fault.  might want to figure this out at some point */
     
-    if (vring.rate < .3)  pv_new_grain(f,sound);  /* straight phase vocoding */
-    else  phase_lock_new_grain(f,sound);  /* phase-locking phase vocoding */
+    if (vring.rate < .3)  pv_new_grain(f,sound,pv_ratio);  /* straight phase vocoding */
+    else  phase_lock_new_grain(f,sound,pv_ratio);  /* phase-locking phase vocoding */
     //CF:  now we have one new grain.
     //CF:  Each output frame is a weighted combination of the latest 4 (HOP) grains.
     //CF:  We use a clever circular buffer structure to compute this efficiently...
@@ -2836,8 +2838,8 @@ pre_wasapi_vcode_synth_frame_rate() {
     
     //        pv_new_grain(f,sound);  /* straight phase vocoding */ //CF:  make a new grain, retured in 'sound' ******
     
-    if (vring.rate < .3)  pv_new_grain(f,sound);  /* straight phase vocoding */
-    else  phase_lock_new_grain(f,sound);  /* phase-locking phase vocoding */
+    if (vring.rate < .3)  pv_new_grain(f,sound,1);  /* straight phase vocoding */
+    else  phase_lock_new_grain(f,sound,1);  /* phase-locking phase vocoding */
     
     //CF:  now we have one new grain.
     //CF:  Each output frame is a weighted combination of the latest 4 (HOP) grains.
@@ -4897,7 +4899,7 @@ AUDIO_FEATURE cal_feature(int offset, float hz0) {
     af.amp = cal_amp(ptr);
     if (af.amp < 0.001) af.hz = hz0;
     else af.hz = cal_pitch_yin(ptr, hz0);
-    printf("\nhz estimate %f", af.hz);
+    //printf("\nhz estimate %f", af.hz);
     return af;
 }
 
@@ -4907,24 +4909,29 @@ float temp_cal_pitch(int offset, float hz0){
     return result;
 }
 
-void write_features(char *name, int onset_frames) {
+void write_features(char *name, int onset_frames, int offset_frames) {
     
     FILE *fp;
     fp = fopen(name, "w");
     if (fp == NULL) { printf("can't open %s\n",name); return; }
     
     AUDIO_FEATURE af;
-    int start, end, s, e, midi, frame_8k, offset, frames, is_onset = 1, count=0, prev_midi = -1;
+    int start, end, s, e, midi, midi_next, frame_8k, future_frame, offset, frames, is_onset = 1, count=0, prev_midi = -1;
     float hz0, abs_time;
     unsigned char *ptr;
     frames = vring.audio_frames;
     fprintf(fp, "Total number of frames: %d\n", frames);
     for (int i = 0; i < frames; i++) {
         
-        frame_8k = i * HOP_LEN / (float) (SKIPLEN * 6); //get corresponding frame index at 8k in order to map it to corresponding MIDI note
-        midi = binary_search(firstnote, lastnote, frame_8k);
-        count = (midi!=prev_midi) ? 0 : (count + 1);
+        frame_8k = i * HOP_LEN / (float) (SKIPLEN * 6); //get corresponding frame index at 8k
+        midi = binary_search(firstnote, lastnote, frame_8k); //map frame to corresponding MIDI note
+        count = (midi!=prev_midi) ? 0 : (count + 1); //check whether note change just occurred
         is_onset = (count < onset_frames)? 1:0;
+        if (i < frames - offset_frames) { //check whether change of note is about to occur
+            future_frame = (i+offset_frames) * HOP_LEN / (float) (SKIPLEN * 6); //8k index of future frame
+            midi_next = binary_search(firstnote, lastnote, future_frame); //get its MIDI note
+            if (midi != midi_next) is_onset = 1;
+        }
         prev_midi = midi;
         
         if (midi == -1 || midi == -2) { //note out of bounds: -1 if before/after solo, -2 if frame is during a rest

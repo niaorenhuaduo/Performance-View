@@ -8,6 +8,7 @@
 
 #include "Resynthesis.h"
 #include "global.h"
+#include "polifitgsl.h"
 
 //
 //float cal_pitch_yin(unsigned char *ptr, float hz0) {
@@ -37,6 +38,78 @@
 //    af.amp = cal_amp(ptr);
 //    return af;
 //}
+
+bool polynomialfit(int obs, int degree,
+                   double *dx, double *dy, double *store) /* n, p */
+{
+    gsl_multifit_linear_workspace *ws;
+    gsl_matrix *cov, *X;
+    gsl_vector *y, *c;
+    double chisq;
+    
+    int i, j;
+    
+    X = gsl_matrix_alloc(obs, degree);
+    y = gsl_vector_alloc(obs);
+    c = gsl_vector_alloc(degree);
+    cov = gsl_matrix_alloc(degree, degree);
+    
+    for(i=0; i < obs; i++) {
+        for(j=0; j < degree; j++) {
+            gsl_matrix_set(X, i, j, pow(dx[i], j));
+        }
+        gsl_vector_set(y, i, dy[i]);
+    }
+    
+    ws = gsl_multifit_linear_alloc(obs, degree);
+    gsl_multifit_linear(X, y, c, cov, &chisq, ws);
+    
+    /* store result ... */
+    for(i=0; i < degree; i++)
+    {
+        store[i] = gsl_vector_get(c, i);
+    }
+    
+    gsl_multifit_linear_free(ws);
+    gsl_matrix_free(X);
+    gsl_matrix_free(cov);
+    gsl_vector_free(y);
+    gsl_vector_free(c);
+    return true; /* we do not "analyse" the result (cov matrix mainly)
+                  to know if the fit is "good" */
+}
+
+void init_feature_list(AUDIO_FEATURE_LIST *a) {
+    a->mu = a->var = a->sd = 0;
+    a->num = 0;
+    memset(a->amplitude.mu, 0, sizeof(double)*128);
+    memset(a->amplitude.musq, 0, sizeof(double)*128);
+    memset(a->amplitude.num, 0, sizeof(int)*128);
+}
+
+void add_amplitude_elem(AUDIO_FEATURE_LIST *list, int nominal, float amp) {
+    list->amplitude.num[nominal]++;
+    double temp1 = (double) logf(amp);
+    double temp2 = (double) powf(logf(amp), 2);
+    list->amplitude.mu[nominal] += (double) logf(amp);
+    list->amplitude.musq[nominal] += (double) powf(logf(amp), 2);
+}
+
+void cal_amplitude_dist(AUDIO_FEATURE_LIST *list) {
+    for (int i = 0; i < 128; i++) {
+        if (list->amplitude.num[i] == 0) {
+            list->amplitude.var[i] = list->amplitude.sd[i] = 1;
+        }
+        else {
+            list->amplitude.mu[i] /= (double) list->amplitude.num[i];
+            list->amplitude.musq[i] /= (double) list->amplitude.num[i];
+            list->amplitude.var[i] = list->amplitude.musq[i] - pow(list->amplitude.mu[i], 2);
+            list->amplitude.sd[i] = sqrt(list->amplitude.var[i]);
+        }
+    }
+}
+
+
 
 int binary_search(int firstnote, int lastnote, int search)
 //finds which midi pitch the search frame belongs to

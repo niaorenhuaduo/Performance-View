@@ -41,7 +41,7 @@ extern int first_accomp,last_accomp;
 extern char score_title[];
 extern char asio_driver[];
 
-extern void write_features(char *name, int onset_frames);
+void write_features(char *name, int onset_frames, int offset_frames);
 
 extern JN state_hat;  /* current kalman state */
 extern float phrase_start;
@@ -116,6 +116,7 @@ extern int focus_on_live;
 extern PERFORMANCE_STATE live_range;
 extern PERFORMANCE_STATE take_range;
 extern char user_dir[];
+extern char include_dir[];
 extern char live_failure_string[];
 extern int mmo_mode;
 extern int orchestra_shift_ms;

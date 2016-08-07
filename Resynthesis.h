@@ -26,17 +26,28 @@ typedef struct {
     //add other features?
 } AUDIO_FEATURE;
 
+typedef struct AMPLITUDE {
+    double mu[128];
+    double musq[128];
+    double sd[128];
+    double var[128];
+    int num[128];
+} AMPLITUDE;
+
 typedef struct {
     AUDIO_FEATURE* el;
     int num;
     double mu;
     double sd;
     double var;
+    AMPLITUDE amplitude;
 } AUDIO_FEATURE_LIST;
 
-void prep_cal_feature(int frame, unsigned char* audioname);
-//AUDIO_FEATURE cal_feature(unsigned char *ptr, float hz0);
-void write_features(char *name, int onset_frames);
+void init_feature_list(AUDIO_FEATURE_LIST *a);
 
+void prep_cal_feature(int frame, unsigned char* audioname);
+void write_features(char *name, int onset_frames, int offset_frames);
+void add_amplitude_elem(AUDIO_FEATURE_LIST *list, int nominal, float amp);
+void cal_amplitude_dist(AUDIO_FEATURE_LIST *list);
 #endif /* Resynthesis_h */
 

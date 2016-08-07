@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		1867FB871D1B160300F134BC /* Yin.c in Sources */ = {isa = PBXBuildFile; fileRef = 1867FB851D1B160300F134BC /* Yin.c */; };
 		1867FB8A1D21991E00F134BC /* Resynthesis.c in Sources */ = {isa = PBXBuildFile; fileRef = 1867FB881D21991E00F134BC /* Resynthesis.c */; };
+		18D1D7241D5084730099C041 /* normal_cdf.c in Sources */ = {isa = PBXBuildFile; fileRef = 18D1D7221D5084730099C041 /* normal_cdf.c */; };
 		8E0576B51C0A3DC4008097E9 /* InstBrowser.m in Sources */ = {isa = PBXBuildFile; fileRef = 8E0576B41C0A3DC4008097E9 /* InstBrowser.m */; };
 		8E29A1C71C0A0949008E6871 /* audio.c in Sources */ = {isa = PBXBuildFile; fileRef = 8E29A18F1C0A0949008E6871 /* audio.c */; };
 		8E29A1C81C0A0949008E6871 /* belief.c in Sources */ = {isa = PBXBuildFile; fileRef = 8E29A1901C0A0949008E6871 /* belief.c */; };
@@ -99,6 +100,9 @@
 		1867FB861D1B160300F134BC /* Yin.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Yin.h; sourceTree = "<group>"; };
 		1867FB881D21991E00F134BC /* Resynthesis.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = Resynthesis.c; sourceTree = "<group>"; };
 		1867FB891D21991E00F134BC /* Resynthesis.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Resynthesis.h; sourceTree = "<group>"; };
+		18D1D7221D5084730099C041 /* normal_cdf.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = normal_cdf.c; sourceTree = "<group>"; };
+		18D1D7231D5084730099C041 /* normal_cdf.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = normal_cdf.h; sourceTree = "<group>"; };
+		18D1D7251D566C4B0099C041 /* polifitgsl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = polifitgsl.h; sourceTree = "<group>"; };
 		8E0576B31C0A3DC4008097E9 /* InstBrowser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = InstBrowser.h; sourceTree = "<group>"; };
 		8E0576B41C0A3DC4008097E9 /* InstBrowser.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = InstBrowser.m; sourceTree = "<group>"; };
 		8E083F051C0A10CC005543A1 /* linux.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = linux.h; sourceTree = "<group>"; };
@@ -325,6 +329,9 @@
 				8EFDC68D1C0A0BFA00B34FE2 /* wasapi.h */,
 				1867FB851D1B160300F134BC /* Yin.c */,
 				1867FB861D1B160300F134BC /* Yin.h */,
+				18D1D7221D5084730099C041 /* normal_cdf.c */,
+				18D1D7231D5084730099C041 /* normal_cdf.h */,
+				18D1D7251D566C4B0099C041 /* polifitgsl.h */,
 			);
 			name = lowlevel;
 			sourceTree = "<group>";
@@ -601,6 +608,7 @@
 				8E29A1CF1C0A0949008E6871 /* dp.c in Sources */,
 				8E7E42D81C0A1A5200112F43 /* NameBrowser.m in Sources */,
 				8ECD74881C0B50C2007D8FE8 /* ReadAudioController.m in Sources */,
+				18D1D7241D5084730099C041 /* normal_cdf.c in Sources */,
 				8E66AA841C0A21220061FF20 /* midi.c in Sources */,
 				8E29A1CB1C0A0949008E6871 /* class.c in Sources */,
 				8EF1234E1C0A36C900787AAD /* PlayerWindow.m in Sources */,
@@ -769,7 +777,9 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "Performance View/Performance View-Prefix.pch";
+				"HEADER_SEARCH_PATHS[arch=*]" = /usr/local/include;
 				INFOPLIST_FILE = "Performance View/Performance View-Info.plist";
+				"PRIVATE_HEADERS_FOLDER_PATH[sdk=*]" = /usr/local/include/;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				WRAPPER_EXTENSION = app;
 			};
@@ -782,7 +792,9 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "Performance View/Performance View-Prefix.pch";
+				"HEADER_SEARCH_PATHS[arch=*]" = /usr/local/include;
 				INFOPLIST_FILE = "Performance View/Performance View-Info.plist";
+				"PRIVATE_HEADERS_FOLDER_PATH[sdk=*]" = /usr/local/include/;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				WRAPPER_EXTENSION = app;
 			};

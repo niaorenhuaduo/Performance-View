@@ -16,6 +16,7 @@
 #include "global.h"
 #include "Resynthesis.h"
 #include "vocoder.h"
+#include "normal_cdf.h"
 
 INC_VALS inc_vals;
 
@@ -27,7 +28,7 @@ INC_VALS inc_vals;
 {
       //the only two global variable taking path of interest
     strcpy(user_dir,"/Users/apple/Documents/Performance-View/user/"); //???moved this higher, it came after setIncButtons
-    
+    strcpy(include_dir, "/usr/local/include/");
     maininit();
     [self setIncButtons];
 
@@ -707,7 +708,7 @@ static int nav_increment;
     strcat(database,current_examp);
     strcat(database, ".feature");
     
-    write_features(database, 3);
+    write_features(database, 3, 1);
     new_create_raw_from_48k(name);
 }
 
@@ -718,7 +719,7 @@ static int nav_increment;
     strcpy(name,audio_data_dir);
     strcat(name,current_examp);
     strcat(name,".feature");
-    write_features(name, 3);
+    write_features(name, 3, 1);
     
     database_pitch = (int*) calloc (128, sizeof(int)); //store existing intervals here
     AUDIO_FEATURE_LIST database_feature_list;
@@ -727,10 +728,12 @@ static int nav_increment;
     char directory[200];
     strcpy(directory, user_dir);
     strcat(directory, "database/");
+    init_feature_list(&database_feature_list);
     if(read_48khz_raw_audio_data_base(directory , &database_feature_list) == 0){
       NSLog(@"Problems in reading database");
       return;
     }
+    cdf_create_table();
     resynth_solo_phase_vocoder(database_feature_list);
 }
 
