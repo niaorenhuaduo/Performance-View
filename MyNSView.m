@@ -253,42 +253,32 @@ float compare_feature(AUDIO_FEATURE ff1, AUDIO_FEATURE ff2) {
 }
 
 static float frame_feature_dist_database(AUDIO_FEATURE ff1, AUDIO_FEATURE ff2, AUDIO_FEATURE_LIST target, AUDIO_FEATURE_LIST source){
-    float dist;
     float amp1, amp2;
-    
-    double temp1 = target.amplitude.mu[ff1.nominal];
-    double temp2 = source.amplitude.mu[ff2.nominal];
     
     if (ff1.amp < 0.001 || ff2.amp < 0.001) return HUGE_VAL;
     
-    //amp1 = cdf_gauss( (logf(ff1.amp) - (float)target.mu)/(float)target.sd ); //normal quantile
-    //amp2 = cdf_gauss( (logf(ff2.amp) - (float)source.mu)/(float)source.sd );
-    
-    amp1 = cdf_gauss( (logf(ff1.amp) - (float)target.amplitude.mu[ff1.nominal])/(float)target.amplitude.sd[ff1.nominal] ); //normal quantile
+    /* normal quantiles */
+    amp1 = cdf_gauss( (logf(ff1.amp) - (float)target.amplitude.mu[ff1.nominal])/(float)target.amplitude.sd[ff1.nominal] );
     amp2 = cdf_gauss( (logf(ff2.amp) - (float)source.amplitude.mu[ff2.nominal])/(float)source.amplitude.sd[ff2.nominal] );
 
+    printf("\namp z-score = %f", amp2);
     return fabsf(ff1.hz - ff2.hz) + 20 *fabsf(amp1 - amp2);
 }
 
 static float frame_feature_dist(AUDIO_FEATURE ff1, AUDIO_FEATURE ff2, AUDIO_FEATURE_LIST target, AUDIO_FEATURE_LIST source){
-    float dist;
     float amp1, amp2;
 
     //if (ff1.onset == 0 && ff2.onset == 1) return -1;
     
     if (ff1.amp < 0.001 || ff2.amp < 0.001) return -1;
     
-    amp1 = cdf_gauss( (logf(ff1.amp) - (float)target.mu)/(float)target.sd ); //normal quantile
-    amp2 = cdf_gauss( (logf(ff2.amp) - (float)source.mu)/(float)source.sd );
+    //amp1 = cdf_gauss( (logf(ff1.amp) - (float)target.mu)/(float)target.sd ); //normal quantile
+    //amp2 = cdf_gauss( (logf(ff2.amp) - (float)source.mu)/(float)source.sd );
     
-    //amp1 = cdf_gauss( (logf(ff1.amp) - (float)target.amplitude.mu[ff1.nominal])/(float)target.amplitude.sd[ff1.nominal] ); //normal quantile
-    //amp2 = cdf_gauss( (logf(ff2.amp) - (float)source.amplitude.mu[ff2.nominal])/(float)source.amplitude.sd[ff2.nominal] );
+    /* normal quantile */
+    amp1 = cdf_gauss( (logf(ff1.amp) - (float)target.amplitude.mu[ff1.nominal])/(float)target.amplitude.sd[ff1.nominal] );
+    amp2 = cdf_gauss( (logf(ff2.amp) - (float)source.amplitude.mu[ff2.nominal])/(float)source.amplitude.sd[ff2.nominal] );
     
-    if (ff1.amp != -1 && ff2.amp != -1) {
-        int temp1 = fabsf(ff1.hz - ff2.hz);
-        int temp2 = fabsf(amp1 - amp2);
-        int temp3 = 1;
-    }
     return fabsf(ff1.hz - ff2.hz) + 20*fabsf(amp1 - amp2);
 }
 
@@ -413,14 +403,14 @@ static void read_features(char *name, AUDIO_FEATURE_LIST *list, double *mean, do
         
         *mean += (double) logf(af.amp);
         meansq += (double) powf(logf(af.amp), 2);
-        add_amplitude_elem(list, af.nominal, af.amp);
+        //add_amplitude_elem(list, af.nominal, af.amp);
     }
     
     *mean /= (double) count;
     meansq /= (double) count;
     *var = meansq - pow(*mean, 2);
     *sd = sqrt(*var);
-    cal_amplitude_dist(list);
+    cal_amplitude_dist(list, count);
     
     fclose(fp);
 }

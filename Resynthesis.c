@@ -10,35 +10,6 @@
 #include "global.h"
 #include "polifitgsl.h"
 
-//
-//float cal_pitch_yin(unsigned char *ptr, float hz0) {
-//    int buffer_length;
-//    buffer_length = 5*((float) YIN_SAMPLING_RATE/hz0);
-//    Yin yin;
-//    Yin_init(&yin, buffer_length, 0.6);
-//    return(Yin_getPitch(&yin, ptr, hz0));
-//}
-//
-//
-//float cal_amp(unsigned char *ptr) {
-//    float amp;
-//    samples2floats(ptr, data_48k, FREQDIM);
-//    amp = 0;
-//    for (int i = 0; i < FREQDIM; i++) { //sum of squares
-//        amp += data_48k[i]*data_48k[i]*coswindow_1024[i];
-//    }
-//    return(sqrtf(amp/FREQDIM));
-//}
-
-
-////calculate feature vector for a given frame of audio
-//AUDIO_FEATURE cal_feature(unsigned char *ptr, float hz0) {
-//    AUDIO_FEATURE af;
-//    af.hz = cal_pitch_yin(ptr, hz0);
-//    af.amp = cal_amp(ptr);
-//    return af;
-//}
-
 bool polynomialfit(int obs, int degree,
                    double *dx, double *dy, double *store) /* n, p */
 {
@@ -83,33 +54,83 @@ void init_feature_list(AUDIO_FEATURE_LIST *a) {
     a->mu = a->var = a->sd = 0;
     a->num = 0;
     memset(a->amplitude.mu, 0, sizeof(double)*128);
-    memset(a->amplitude.musq, 0, sizeof(double)*128);
-    memset(a->amplitude.num, 0, sizeof(int)*128);
+    memset(a->amplitude.sd, 0, sizeof(double)*128);
+    memset(a->amplitude.var, 0, sizeof(double)*128);
+    //memset(a->amplitude.musq, 0, sizeof(double)*128);
+    //memset(a->amplitude.num, 0, sizeof(int)*128);
 }
 
-void add_amplitude_elem(AUDIO_FEATURE_LIST *list, int nominal, float amp) {
-    list->amplitude.num[nominal]++;
-    double temp1 = (double) logf(amp);
-    double temp2 = (double) powf(logf(amp), 2);
-    list->amplitude.mu[nominal] += (double) logf(amp);
-    list->amplitude.musq[nominal] += (double) powf(logf(amp), 2);
-}
+//void add_amplitude_elem(AUDIO_FEATURE_LIST *list, int nominal, float amp) {
+//    list->amplitude.num[nominal]++;
+//    double temp1 = (double) logf(amp);
+//    double temp2 = (double) powf(logf(amp), 2);
+//    list->amplitude.mu[nominal] += (double) logf(amp);
+//    list->amplitude.musq[nominal] += (double) powf(logf(amp), 2);
+//}
 
-void cal_amplitude_dist(AUDIO_FEATURE_LIST *list) {
-    for (int i = 0; i < 128; i++) {
-        if (list->amplitude.num[i] == 0) {
-            list->amplitude.var[i] = list->amplitude.sd[i] = 1;
-        }
-        else {
-            list->amplitude.mu[i] /= (double) list->amplitude.num[i];
-            list->amplitude.musq[i] /= (double) list->amplitude.num[i];
-            list->amplitude.var[i] = list->amplitude.musq[i] - pow(list->amplitude.mu[i], 2);
-            list->amplitude.sd[i] = sqrt(list->amplitude.var[i]);
-        }
+//void cal_amplitude_dist(AUDIO_FEATURE_LIST *list) {
+//    for (int i = 0; i < 128; i++) {
+//        if (list->amplitude.num[i] == 0) {
+//            list->amplitude.var[i] = list->amplitude.sd[i] = 1;
+//        }
+//        else {
+//            list->amplitude.mu[i] /= (double) list->amplitude.num[i];
+//            list->amplitude.musq[i] /= (double) list->amplitude.num[i];
+//            list->amplitude.var[i] = list->amplitude.musq[i] - pow(list->amplitude.mu[i], 2);
+//            list->amplitude.sd[i] = sqrt(list->amplitude.var[i]);
+//        }
+//    }
+//}
+
+void cal_amplitude_dist(AUDIO_FEATURE_LIST *list, int frames) {
+    int polydegree = 3, ind = 0;
+    double *amp = (double*) malloc (frames * sizeof(double));
+    double *nom = (double*) malloc (frames * sizeof(double));
+
+    /* copy the values into arrays of doubles */
+    for (int i = 0; i < list->num; i++){
+        if (list->el[i].amp < 0.001) continue; //remove silent frames
+        amp[ind] = (double) logf(list->el[i].amp);
+        nom[ind] = (double) list->el[i].nominal;
+        ind++;
     }
+
+    /* Ordinary Least Squares regression */
+    double *coeff = (double*) malloc (polydegree * sizeof(double));
+    polynomialfit(ind, polydegree, nom, amp, coeff);
+    
+    /* calculate estimate of amplitude mean for each MIDI index */
+    for (int i = 0; i < 128; i++) {
+        for (int j = 0; j < polydegree; j++) {
+            list->amplitude.mu[i] += coeff[j] * pow(i, j);
+        }
+        printf("\namp mu %lf", list->amplitude.mu[i]);
+    }
+
+    /* calculate squared deviation from the mean using OLS */
+    for (int i = 0; i < frames; i++) {
+        int temp1 = nom[i];
+        amp[i] -= list->amplitude.mu[(int)nom[i]];
+        amp[i] = pow(amp[i],2);
+    }
+    
+    polynomialfit(ind, polydegree, nom, amp, coeff);
+    
+    for (int i = 0; i < 128; i++) {
+        for (int j = 0; j < polydegree; j++) {
+            list->amplitude.sd[i] += coeff[j] * pow(i, j);
+        }
+        list->amplitude.sd[i] = max(0.0001, list->amplitude.sd[i]); //remove negatives
+        /* get standard deviation from variance */
+        list->amplitude.sd[i] = sqrt(list->amplitude.sd[i]);
+        printf("\nsd %lf", list->amplitude.sd[i]);
+
+    }
+    
+    free(nom);
+    free(amp);
+    free(coeff);
 }
-
-
 
 int binary_search(int firstnote, int lastnote, int search)
 //finds which midi pitch the search frame belongs to

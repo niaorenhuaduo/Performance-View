@@ -28,10 +28,10 @@ typedef struct {
 
 typedef struct AMPLITUDE {
     double mu[128];
-    double musq[128];
+    //double musq[128];
     double sd[128];
     double var[128];
-    int num[128];
+    //int num[128];
 } AMPLITUDE;
 
 typedef struct {
@@ -48,6 +48,6 @@ void init_feature_list(AUDIO_FEATURE_LIST *a);
 void prep_cal_feature(int frame, unsigned char* audioname);
 void write_features(char *name, int onset_frames, int offset_frames);
 void add_amplitude_elem(AUDIO_FEATURE_LIST *list, int nominal, float amp);
-void cal_amplitude_dist(AUDIO_FEATURE_LIST *list);
+void cal_amplitude_dist(AUDIO_FEATURE_LIST *list, int frames);
 #endif /* Resynthesis_h */
 

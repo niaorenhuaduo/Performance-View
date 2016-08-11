@@ -538,7 +538,7 @@ static void append_features(char *name, AUDIO_FEATURE_LIST *list, double *mean, 
             *mean += (double) logf(af.amp);
             *meansq += (double) powf(logf(af.amp), 2);
             *framecount += 1;
-            add_amplitude_elem(list, af.nominal, af.amp);
+            //add_amplitude_elem(list, af.nominal, af.amp);
         }
     }
     
@@ -618,7 +618,7 @@ read_48khz_raw_audio_data_base(char *directory, AUDIO_FEATURE_LIST *list) {
     grand_meansq /= (double) total_frames;
     list->var = grand_meansq - pow(list->mu, 2);
     list->sd = sqrt(list->var);
-    cal_amplitude_dist(list);
+    cal_amplitude_dist(list, total_frames);
     closedir (dir);
     return(1);
 }
