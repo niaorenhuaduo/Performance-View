@@ -383,8 +383,10 @@ void transpose_features(char *name, char *new_file, int semitones) {
     fclose(np);
 }
 
-static void read_features(char *name, AUDIO_FEATURE_LIST *list, double *mean, double *var, double *sd) {
+static void read_features(char *name, char *spectral_name, AUDIO_FEATURE_LIST *list, double *mean, double *var, double *sd) {
     double meansq = 0;
+    int cols = 0;
+    double buff[12];
     FILE *fp;
     fp = fopen(name, "r");
     if (fp == NULL) { printf("can't open %s\n",name); return; }
@@ -392,12 +394,29 @@ static void read_features(char *name, AUDIO_FEATURE_LIST *list, double *mean, do
     int frames = 0, count = 0;
     fscanf(fp,"Total number of frames: %d\n",&frames);
     
+    FILE *sp;
+    sp = fopen(spectral_name, "rb");
+    if (sp == NULL) { printf("can't open %s\n",spectral_name); return; }
+    
+    if (strcmp(feature_choice, "chroma") == 0) cols = 12; //given append_features problem, is this broken???
+    else printf("\nneed valid feature choice");
+    
     AUDIO_FEATURE af;
     list->num = 0;
     list->el = malloc(frames * sizeof(AUDIO_FEATURE));
+    
     while (feof(fp) == 0) {
         fscanf(fp, "%d\t%f\t%f\t%d\t%d\n", &af.frame, &af.hz, &af.amp, &af.nominal, &af.onset);
-        if(af.hz == -1 || af.nominal == -1) continue;
+
+        if(af.hz == -1 || af.nominal == -1) { //skip over useless frames
+            int temp = fread(buff, 8, cols, sp);
+            continue;
+        }
+        
+        /* read in spectral data */
+        af.spectral = (double*) malloc (cols*sizeof(double));
+        fread(af.spectral, 8, cols, sp);
+        
         list->el[list->num++] = af;
         count++;
         
@@ -413,37 +432,10 @@ static void read_features(char *name, AUDIO_FEATURE_LIST *list, double *mean, do
     cal_amplitude_dist(list, count);
     
     fclose(fp);
+    fclose(sp);
 }
 
 
-//static void read_features(char *name, AUDIO_FEATURE_LIST *list, double *mean, double *var, double *sd) {
-//    double meansq = 0;
-//    FILE *fp;
-//    fp = fopen(name, "r");
-//    if (fp == NULL) { printf("can't open %s\n",name); return; }
-//    
-//    int frames = 0, count = 0;
-//    fscanf(fp,"Total number of frames: %d\n",&frames);
-//    
-//    AUDIO_FEATURE af;
-//    list->num = 0;
-//    list->el = malloc(frames * sizeof(AUDIO_FEATURE));
-//    while (feof(fp) == 0) {
-//        fscanf(fp, "%d\t%f\t%f\t%d\t%d\n", &af.frame, &af.hz, &af.amp, &af.nominal, &af.onset);
-//        if(af.hz == -1 || af.nominal == -1) continue;
-//        list->el[list->num++] = af;
-//        count++;
-//        *mean += (double) log(af.amp);
-//        meansq += (double) pow(log(af.amp), 2);
-//    }
-//    
-//    *mean /= (double) count;
-//    meansq /= (double) count;
-//    *var = meansq - pow(*mean, 2);
-//    *sd = sqrt(*var);
-//    
-//    fclose(fp);
-//}
 
 static int** malloc_int_matrix(int rows, int cols){
     int **matrix = malloc(rows *sizeof(int*));
@@ -528,6 +520,11 @@ void resynth_solo_dtw() {
 void resynth_solo_phase_vocoder(AUDIO_FEATURE_LIST database_feature_list) {
     char target_name[200];
     char recons_name[200];
+    char spectral_name[200];
+    
+    strcpy(spectral_name,audio_data_dir);
+    strcat(spectral_name,current_examp);
+    strcat(spectral_name, ".chroma");
     
     strcpy(target_name,audio_data_dir);
     strcat(target_name,current_examp);
@@ -545,7 +542,7 @@ void resynth_solo_phase_vocoder(AUDIO_FEATURE_LIST database_feature_list) {
     AUDIO_FEATURE_LIST saved_feature_list;
     init_feature_list(&saved_feature_list, feature_choice);
     
-    read_features(target_name, &saved_feature_list, &saved_feature_list.mu, &saved_feature_list.var, &saved_feature_list.sd);
+    read_features(target_name, spectral_name, &saved_feature_list, &saved_feature_list.mu, &saved_feature_list.var, &saved_feature_list.sd);
     
     vcode_init();
     temp_rewrite_audio();

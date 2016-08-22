@@ -517,32 +517,14 @@ read_48khz_raw_audio_name(char *name) {
     return(1);
 }
 
-//int read_spectral(const char *name, int dim) {
-//    int i,j;
-//    FILE *fp;
-//    
-//    fp = fopen(name,"rb");
-//    if (fp== NULL) {printf(" couldn't open %s\n",name); exit(0); }
-//    printf("reading database audio...");
-//    for (i=0; ; i++)  {
-//        if (i % 1000 == 0) printf("%d\n", i);
-//        for (j=0; j < VOC_TOKEN_LEN/2; j++) fread(&(vcode_data[i][j]),sizeof(VCODE_ELEM),1,fp);
-//        if (feof(fp)) break;
-//    }
-//    fclose(fp);
-//    return(i);
-//    
-//}
-
-
 
 static void append_features(char *name, char* spectral_name, AUDIO_FEATURE_LIST *list, double *mean, double *meansq, int *framecount) {
     
     FILE *fp;
+    int h = 0, cols = 0;
     fp = fopen(name, "r");
-    int h = 0;
-    int cols = 0;
     if (fp == NULL) { printf("can't open %s\n",name); return; }
+
     
     int frames = 0;
     fscanf(fp,"Total number of frames: %d\n",&frames);
@@ -550,6 +532,9 @@ static void append_features(char *name, char* spectral_name, AUDIO_FEATURE_LIST 
     FILE *sp;
     sp = fopen(spectral_name, "rb");
     if (sp == NULL) { printf("can't open %s\n",spectral_name); return; }
+    
+    if (strcmp(feature_choice, "chroma") == 0) cols = 12; //why, if this is moved below, does it shift index by 1???
+    else printf("\nneed valid feature choice");
     
     AUDIO_FEATURE af;
     int temp = 0;
@@ -559,11 +544,8 @@ static void append_features(char *name, char* spectral_name, AUDIO_FEATURE_LIST 
         if (af.nominal != -1) { database_pitch[af.nominal] = 1; }
         
         /* read in spectral data */
-        if (strcmp(feature_choice, "chroma") == 0) cols = 12; //why, if this is moved below, does it shift index by 1???
-        else printf("\nneed valid feature choice");
         af.spectral = (double*) malloc (cols*sizeof(double));
         fread(af.spectral, 8, cols, sp);
-
 
         list->el[list->num++] = af;
 
@@ -576,7 +558,6 @@ static void append_features(char *name, char* spectral_name, AUDIO_FEATURE_LIST 
 
     fclose(fp);
     fclose(sp);
-    exit(0);
     
 }
 
