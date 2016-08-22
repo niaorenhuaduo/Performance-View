@@ -517,32 +517,66 @@ read_48khz_raw_audio_name(char *name) {
     return(1);
 }
 
+//int read_spectral(const char *name, int dim) {
+//    int i,j;
+//    FILE *fp;
+//    
+//    fp = fopen(name,"rb");
+//    if (fp== NULL) {printf(" couldn't open %s\n",name); exit(0); }
+//    printf("reading database audio...");
+//    for (i=0; ; i++)  {
+//        if (i % 1000 == 0) printf("%d\n", i);
+//        for (j=0; j < VOC_TOKEN_LEN/2; j++) fread(&(vcode_data[i][j]),sizeof(VCODE_ELEM),1,fp);
+//        if (feof(fp)) break;
+//    }
+//    fclose(fp);
+//    return(i);
+//    
+//}
 
 
-static void append_features(char *name, AUDIO_FEATURE_LIST *list, double *mean, double *meansq, int *framecount) {
+
+static void append_features(char *name, char* spectral_name, AUDIO_FEATURE_LIST *list, double *mean, double *meansq, int *framecount) {
     
     FILE *fp;
     fp = fopen(name, "r");
     int h = 0;
+    int cols = 0;
     if (fp == NULL) { printf("can't open %s\n",name); return; }
     
     int frames = 0;
     fscanf(fp,"Total number of frames: %d\n",&frames);
     
+    FILE *sp;
+    sp = fopen(spectral_name, "rb");
+    if (sp == NULL) { printf("can't open %s\n",spectral_name); return; }
+    
     AUDIO_FEATURE af;
+    int temp = 0;
     while (feof(fp) == 0) {
         fscanf(fp, "%d\t%f\t%f\t%d\t%d\n", &af.frame, &af.hz, &af.amp, &af.nominal, &af.onset);
+        temp ++;
         if (af.nominal != -1) { database_pitch[af.nominal] = 1; }
+        
+        /* read in spectral data */
+        if (strcmp(feature_choice, "chroma") == 0) cols = 12; //why, if this is moved below, does it shift index by 1???
+        else printf("\nneed valid feature choice");
+        af.spectral = (double*) malloc (cols*sizeof(double));
+        fread(af.spectral, 8, cols, sp);
+
+
         list->el[list->num++] = af;
+
         if (af.amp != -1) {
             *mean += (double) logf(af.amp);
             *meansq += (double) powf(logf(af.amp), 2);
             *framecount += 1;
-            //add_amplitude_elem(list, af.nominal, af.amp);
         }
     }
-    
+
     fclose(fp);
+    fclose(sp);
+    exit(0);
     
 }
 
@@ -561,6 +595,7 @@ read_48khz_raw_audio_data_base(char *directory, AUDIO_FEATURE_LIST *list) {
     char feature_file_name[200];
     char audio_file_name_stub[200];
     char audio_file_name[200];
+    char spectral_file_name[200];
     
     int len[MAX_DATA_NUM];
     int cnt = 0;
@@ -575,7 +610,7 @@ read_48khz_raw_audio_data_base(char *directory, AUDIO_FEATURE_LIST *list) {
             if (fp == NULL) { printf("couldn't read %s\n",ent->d_name); exit(0); }
             int cur_total = 0;
             while (feof(fp) == 0) cur_total +=  fread(temp,1,READ_TEST_SIZE,fp);
-            
+            //reads in slightly truncated audio files (keeps the maximum integral multiple of frames)
             int temp_num_frame = (cur_total/BYTES_PER_SAMPLE)/SAMPLES_PER_FRAME;
             cur_total = temp_num_frame*SAMPLES_PER_FRAME*BYTES_PER_SAMPLE;
             len[cnt++] = cur_total;
@@ -585,7 +620,7 @@ read_48khz_raw_audio_data_base(char *directory, AUDIO_FEATURE_LIST *list) {
     }
     closedir (dir);
     
-    
+
     samps = total/BYTES_PER_SAMPLE;
     vring.audio_frames = (int) (samps / SAMPLES_PER_FRAME);
     vring.audio = (unsigned char *) malloc(total);
@@ -611,7 +646,12 @@ read_48khz_raw_audio_data_base(char *directory, AUDIO_FEATURE_LIST *list) {
             strcpy(feature_file_name , directory);
             strcat(feature_file_name , audio_file_name_stub);
             strcat(feature_file_name, ".feature");
-            append_features(feature_file_name, list, &list->mu, &grand_meansq, &total_frames);
+            
+            strcpy(spectral_file_name , directory);
+            strcat(spectral_file_name , audio_file_name_stub);
+            strcat(spectral_file_name, ".");
+            strcat(spectral_file_name, feature_choice);
+            append_features(feature_file_name, spectral_file_name, list, &list->mu, &grand_meansq, &total_frames);
         }
     }
     list->mu /= (double) total_frames;

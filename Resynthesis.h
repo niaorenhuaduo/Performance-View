@@ -23,6 +23,7 @@ typedef struct {
     int frame;
     int nominal;
     int onset;
+    double *spectral;
     //add other features?
 } AUDIO_FEATURE;
 
@@ -43,11 +44,10 @@ typedef struct {
     AMPLITUDE amplitude;
 } AUDIO_FEATURE_LIST;
 
-void init_feature_list(AUDIO_FEATURE_LIST *a);
+void init_feature_list(AUDIO_FEATURE_LIST *a, char* choice);
 
 void prep_cal_feature(int frame, unsigned char* audioname);
 void write_features(char *name, int onset_frames, int offset_frames);
-void add_amplitude_elem(AUDIO_FEATURE_LIST *list, int nominal, float amp);
 void cal_amplitude_dist(AUDIO_FEATURE_LIST *list, int frames);
 #endif /* Resynthesis_h */
 

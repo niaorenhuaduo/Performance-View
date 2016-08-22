@@ -50,37 +50,14 @@ bool polynomialfit(int obs, int degree,
                   to know if the fit is "good" */
 }
 
-void init_feature_list(AUDIO_FEATURE_LIST *a) {
+void init_feature_list(AUDIO_FEATURE_LIST *a, char* choice) {
     a->mu = a->var = a->sd = 0;
     a->num = 0;
     memset(a->amplitude.mu, 0, sizeof(double)*128);
     memset(a->amplitude.sd, 0, sizeof(double)*128);
     memset(a->amplitude.var, 0, sizeof(double)*128);
-    //memset(a->amplitude.musq, 0, sizeof(double)*128);
-    //memset(a->amplitude.num, 0, sizeof(int)*128);
+
 }
-
-//void add_amplitude_elem(AUDIO_FEATURE_LIST *list, int nominal, float amp) {
-//    list->amplitude.num[nominal]++;
-//    double temp1 = (double) logf(amp);
-//    double temp2 = (double) powf(logf(amp), 2);
-//    list->amplitude.mu[nominal] += (double) logf(amp);
-//    list->amplitude.musq[nominal] += (double) powf(logf(amp), 2);
-//}
-
-//void cal_amplitude_dist(AUDIO_FEATURE_LIST *list) {
-//    for (int i = 0; i < 128; i++) {
-//        if (list->amplitude.num[i] == 0) {
-//            list->amplitude.var[i] = list->amplitude.sd[i] = 1;
-//        }
-//        else {
-//            list->amplitude.mu[i] /= (double) list->amplitude.num[i];
-//            list->amplitude.musq[i] /= (double) list->amplitude.num[i];
-//            list->amplitude.var[i] = list->amplitude.musq[i] - pow(list->amplitude.mu[i], 2);
-//            list->amplitude.sd[i] = sqrt(list->amplitude.var[i]);
-//        }
-//    }
-//}
 
 void cal_amplitude_dist(AUDIO_FEATURE_LIST *list, int frames) {
     int polydegree = 3, ind = 0;

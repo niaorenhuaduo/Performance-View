@@ -262,13 +262,13 @@ static float frame_feature_dist_database(AUDIO_FEATURE ff1, AUDIO_FEATURE ff2, A
     amp2 = cdf_gauss( (logf(ff2.amp) - (float)source.amplitude.mu[ff2.nominal])/(float)source.amplitude.sd[ff2.nominal] );
 
     printf("\namp z-score = %f", amp2);
-    return fabsf(ff1.hz - ff2.hz) + 20 *fabsf(amp1 - amp2);
+    return fabsf(ff1.hz - ff2.hz) + 50 *fabsf(amp1 - amp2);
 }
 
 static float frame_feature_dist(AUDIO_FEATURE ff1, AUDIO_FEATURE ff2, AUDIO_FEATURE_LIST target, AUDIO_FEATURE_LIST source){
     float amp1, amp2;
 
-    //if (ff1.onset == 0 && ff2.onset == 1) return -1;
+    if (ff1.onset == 0 && ff2.onset == 1) return -1;
     
     if (ff1.amp < 0.001 || ff2.amp < 0.001) return -1;
     
@@ -279,7 +279,7 @@ static float frame_feature_dist(AUDIO_FEATURE ff1, AUDIO_FEATURE ff2, AUDIO_FEAT
     amp1 = cdf_gauss( (logf(ff1.amp) - (float)target.amplitude.mu[ff1.nominal])/(float)target.amplitude.sd[ff1.nominal] );
     amp2 = cdf_gauss( (logf(ff2.amp) - (float)source.amplitude.mu[ff2.nominal])/(float)source.amplitude.sd[ff2.nominal] );
     
-    return fabsf(ff1.hz - ff2.hz) + 20*fabsf(amp1 - amp2);
+    return fabsf(ff1.hz - ff2.hz) + 50*fabsf(amp1 - amp2);
 }
 
 static float frame_feature_dist_continuous(AUDIO_FEATURE ff1, AUDIO_FEATURE ff2, AUDIO_FEATURE_LIST target, AUDIO_FEATURE_LIST source){
@@ -403,7 +403,7 @@ static void read_features(char *name, AUDIO_FEATURE_LIST *list, double *mean, do
         
         *mean += (double) logf(af.amp);
         meansq += (double) powf(logf(af.amp), 2);
-        //add_amplitude_elem(list, af.nominal, af.amp);
+        
     }
     
     *mean /= (double) count;
@@ -508,6 +508,22 @@ static void build_best_path(int **best, AUDIO_FEATURE_LIST list, int num){
     free(p);
 }
 
+void resynth_solo_dtw() {
+    int ind;
+    FILE *fp;
+    char file[200];
+    strcpy(file,"/Users/apple/Documents/mir/path.txt");
+    vcode_init();
+    temp_rewrite_audio();
+    fp = fopen(file, "r");
+    while (feof(fp) == 0) {
+        fscanf(fp,"%d\n",&ind);
+        vcode_synth_frame_var(ind, 1);
+
+    }
+    fclose(fp);
+}
+
 
 void resynth_solo_phase_vocoder(AUDIO_FEATURE_LIST database_feature_list) {
     char target_name[200];
@@ -524,8 +540,10 @@ void resynth_solo_phase_vocoder(AUDIO_FEATURE_LIST database_feature_list) {
     strcat(recons_name, current_examp);
     strcat(recons_name, ".reconstruction");
     
+    
+    
     AUDIO_FEATURE_LIST saved_feature_list;
-    init_feature_list(&saved_feature_list);
+    init_feature_list(&saved_feature_list, feature_choice);
     
     read_features(target_name, &saved_feature_list, &saved_feature_list.mu, &saved_feature_list.var, &saved_feature_list.sd);
     
@@ -544,7 +562,7 @@ void resynth_solo_phase_vocoder(AUDIO_FEATURE_LIST database_feature_list) {
         }
     }
     
-    build_best_path(best, database_feature_list, n_best);
+//    build_best_path(best, database_feature_list, n_best);
     
     /* temp database storage on disk */
     char *database_file[200];
@@ -553,12 +571,12 @@ void resynth_solo_phase_vocoder(AUDIO_FEATURE_LIST database_feature_list) {
     FILE *fd;
     
     /*temp write to disk*/
-    fd = fopen(database_file, "wb");
-    for (int i = 0; i < database_feature_list.num; i++) {
-        if(fwrite(best[i], sizeof(int), n_best, fd) != n_best)
-            printf("File write error.");
-    }
-    fclose(fd);
+//    fd = fopen(database_file, "wb");
+//    for (int i = 0; i < database_feature_list.num; i++) {
+//        if(fwrite(best[i], sizeof(int), n_best, fd) != n_best)
+//            printf("File write error.");
+//    }
+//    fclose(fd);
     
     /* temp read from disk */
     fd = fopen(database_file, "rb");
@@ -598,6 +616,8 @@ void resynth_solo_phase_vocoder(AUDIO_FEATURE_LIST database_feature_list) {
             /* case where database frames are consecutive */
             float dis = frame_feature_dist(f1, f2, saved_feature_list, database_feature_list);
             if (dis < 0) continue; //hard constraints defined in frame_feature_dist
+            
+            if (f1.nominal+transp != f2.nominal) dis += pitch_penalty;
 
             //if (f1.hz/f2.hz > 1.029302 || f1.hz/f2.hz < 0.9715319) dis += pitch_penalty; //pitches more than a 1/4 tone apart
             
@@ -606,6 +626,12 @@ void resynth_solo_phase_vocoder(AUDIO_FEATURE_LIST database_feature_list) {
                 score[ind][j] = score[ind-1][j-1] + dis;
                 prev[ind][j] = j-1; //j-1 is the index of feature list but not actually the index of frame)
             }
+            
+//            if(j > 0 && score[i][j] > score[ind-1][j] + dis) {
+//                int temp = score[ind-1][j-1];
+//                score[ind][j] = score[ind-1][j-1] + dis;
+//                prev[ind][j] = j-1; //j-1 is the index of feature list but not actually the index of frame)
+//            }
             
             for(int jj = 0; jj < n_best; jj++){
                 int index = best[j][jj];
@@ -647,7 +673,7 @@ void resynth_solo_phase_vocoder(AUDIO_FEATURE_LIST database_feature_list) {
     
     for(int i = 1; i < ind - 1; i++){ //i is the frame index of test data
         printf("\ni = %d nominal pitch (target)/3:%d \tnominal pitch (database):%d \t",i, saved_feature_list.el[i].nominal + transp , database_feature_list.el[best_prev[i]].nominal);
-        //pv_ratio = saved_feature_list.el[i].hz / (transp_ratio * database_feature_list.el[best_prev[i]].hz); //pitch correction ratio for phase vocoder
+        pv_ratio = saved_feature_list.el[i].hz / (transp_ratio * database_feature_list.el[best_prev[i]].hz); //pitch correction ratio for phase vocoder
         pv_ratio = 1;
         if (pv_ratio > 1.5 || pv_ratio < 0.75) pv_ratio = 1;
         vcode_synth_frame_var(best_prev[i], pv_ratio);
@@ -657,7 +683,7 @@ void resynth_solo_phase_vocoder(AUDIO_FEATURE_LIST database_feature_list) {
     
     for (int i = 1; i < ind - 1; i++){
         AUDIO_FEATURE af = database_feature_list.el[best_prev[i]];
-        fprintf(fp,"%d\t%f\t%f\t%d\t%d\n", best_prev[i], af.hz, af.amp, af.nominal, af.onset);
+        fprintf(fp,"%d\t%d\t%f\t%f\t%d\t%d\n", i, best_prev[i], af.hz, af.amp, af.nominal, af.onset);
     }
     fclose(fp);
 }

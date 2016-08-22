@@ -148,10 +148,12 @@ void resynth_solo_phase_vocoder();
 int count_database_intervals(char *directory, char *map_file_name);
 int count_intervals(char *name, int transp);
 extern void transpose_features(char *name, char *new_file, int semitones);
+void resynth_solo_dtw();
 int get_score_transposition(char* name);
 extern int tps;
 extern int *database_pitch;
 extern void new_create_raw_from_48k(char *name);
+const char feature_choice[];
 
 
 

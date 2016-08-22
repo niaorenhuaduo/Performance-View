@@ -728,7 +728,7 @@ static int nav_increment;
     char directory[200];
     strcpy(directory, user_dir);
     strcat(directory, "database/");
-    init_feature_list(&database_feature_list);
+    init_feature_list(&database_feature_list, feature_choice);
     if(read_48khz_raw_audio_data_base(directory , &database_feature_list) == 0){
       NSLog(@"Problems in reading database");
       return;
@@ -738,7 +738,6 @@ static int nav_increment;
 }
 
 
-
 - (IBAction)CountIntervals:(id)sender {
     if (current_examp[0] == '\0') { printf("need to read audio\n"); exit(0); }
     //if (user[0] == '\0') { printf("need to read audio\n"); exit(0); }
@@ -746,7 +745,7 @@ static int nav_increment;
     char name[200];
     int transp = 0; //for now
     strcpy(name, user_dir);
-    strcat(name, "python/");
+    strcat(name, "python/intervals/");
     strcat(name,player);
     strcat(name, "_");
     strcat(name,current_examp);
@@ -763,6 +762,10 @@ static int nav_increment;
         return;
     }
      */
+}
+
+- (IBAction)RunPV:(id)sender {
+    resynth_solo_dtw();
 }
 
 - (IBAction)TransposeFeatures:(NSButton *)sender {
