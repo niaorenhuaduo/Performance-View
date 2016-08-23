@@ -518,13 +518,12 @@ read_48khz_raw_audio_name(char *name) {
 }
 
 
-static void append_features(char *name, char* spectral_name, AUDIO_FEATURE_LIST *list, double *mean, double *meansq, int *framecount) {
+static void append_features(char *name, char* spectral_name, char* fftmod_name, AUDIO_FEATURE_LIST *list, double *mean, double *meansq, int *framecount) {
     
     FILE *fp;
-    int h = 0, cols = 0;
+    int h = 0;
     fp = fopen(name, "r");
     if (fp == NULL) { printf("can't open %s\n",name); return; }
-
     
     int frames = 0;
     fscanf(fp,"Total number of frames: %d\n",&frames);
@@ -533,10 +532,15 @@ static void append_features(char *name, char* spectral_name, AUDIO_FEATURE_LIST 
     sp = fopen(spectral_name, "rb");
     if (sp == NULL) { printf("can't open %s\n",spectral_name); return; }
     
-    if (strcmp(feature_choice, "chroma") == 0) cols = 12; //why, if this is moved below, does it shift index by 1???
-    else printf("\nneed valid feature choice");
+    char modulus_file_name[200];
+    FILE *mp;
+    if (strcmp(feature_choice, "bins") == 0) {
+        mp = fopen(fftmod_name, "rb");
+        if (mp == NULL) { printf("can't open %s\n",fftmod_name); return; }
+    }
     
     AUDIO_FEATURE af;
+    
     int temp = 0;
     while (feof(fp) == 0) {
         fscanf(fp, "%d\t%f\t%f\t%d\t%d\n", &af.frame, &af.hz, &af.amp, &af.nominal, &af.onset);
@@ -544,8 +548,13 @@ static void append_features(char *name, char* spectral_name, AUDIO_FEATURE_LIST 
         if (af.nominal != -1) { database_pitch[af.nominal] = 1; }
         
         /* read in spectral data */
-        af.spectral = (double*) malloc (cols*sizeof(double));
-        fread(af.spectral, 8, cols, sp);
+        af.spectral = (double*) malloc (spect_feature_dim*sizeof(double));
+        fread(af.spectral, sizeof(double), spect_feature_dim, sp);
+        
+        if (strcmp(feature_choice, "bins") == 0) {
+            af.fft_mod = (float*) malloc (2049*sizeof(float));
+            fread(af.fft_mod, sizeof(float), 2049, mp);
+        }
 
         list->el[list->num++] = af;
 
@@ -577,6 +586,7 @@ read_48khz_raw_audio_data_base(char *directory, AUDIO_FEATURE_LIST *list) {
     char audio_file_name_stub[200];
     char audio_file_name[200];
     char spectral_file_name[200];
+    char modulus_file_name[200];
     
     int len[MAX_DATA_NUM];
     int cnt = 0;
@@ -632,7 +642,13 @@ read_48khz_raw_audio_data_base(char *directory, AUDIO_FEATURE_LIST *list) {
             strcat(spectral_file_name , audio_file_name_stub);
             strcat(spectral_file_name, ".");
             strcat(spectral_file_name, feature_choice);
-            append_features(feature_file_name, spectral_file_name, list, &list->mu, &grand_meansq, &total_frames);
+            
+            strcpy(modulus_file_name, directory);
+            strcat(modulus_file_name, audio_file_name_stub);
+            strcat(modulus_file_name, ".");
+            strcat(modulus_file_name, "stft");
+            
+            append_features(feature_file_name, spectral_file_name, modulus_file_name, list, &list->mu, &grand_meansq, &total_frames);
         }
     }
     list->mu /= (double) total_frames;

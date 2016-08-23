@@ -24,6 +24,7 @@ typedef struct {
     int nominal;
     int onset;
     double *spectral;
+    float *fft_mod;
     //add other features?
 } AUDIO_FEATURE;
 

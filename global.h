@@ -154,6 +154,7 @@ extern int tps;
 extern int *database_pitch;
 extern void new_create_raw_from_48k(char *name);
 const char feature_choice[];
+extern int spect_feature_dim;
 
 
 

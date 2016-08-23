@@ -56,6 +56,14 @@ void init_feature_list(AUDIO_FEATURE_LIST *a, char* choice) {
     memset(a->amplitude.mu, 0, sizeof(double)*128);
     memset(a->amplitude.sd, 0, sizeof(double)*128);
     memset(a->amplitude.var, 0, sizeof(double)*128);
+    
+    if (strcmp(feature_choice, "chroma") == 0) spect_feature_dim = 12; //given append_features problem, is this broken???
+    else if (strcmp(feature_choice, "mfcc") == 0) spect_feature_dim = 20;
+    else if (strcmp(feature_choice, "bins") == 0) spect_feature_dim = 3;
+    else {
+        printf("\nneed valid feature choice");
+        exit(0);
+    }
 
 }
 
