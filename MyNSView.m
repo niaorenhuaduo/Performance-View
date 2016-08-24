@@ -546,8 +546,57 @@ void resynth_solo_dtw() {
     fclose(fp);
 }
 
+void synth_jukebox_pv(AUDIO_FEATURE_LIST database_feature_list) {
+    long* ind;
+    char name[200];
+    char recons_name[200];
+    
+    strcpy(recons_name, user_dir);
+    strcat(recons_name, "python/");
+    strcat(recons_name, player);
+    strcat(recons_name, "_");
+    strcat(recons_name, current_examp);
+    strcat(recons_name, ".jbxreconstruction");
+    
+    strcpy(name, user_dir);
+    strcat(name, "jukebox_ind");
+    
+    FILE *fd;
+    fd = fopen(name, "rb");
+    fseek(fd, 0L, SEEK_END);
+    int sz = ftell(fd)/sizeof(long);
+    rewind(fd);
+    
+    ind = (long*) malloc (sz * sizeof(long));
+    
+    int f = fread(ind, sizeof(long), sz, fd);
+    fclose(fd);
+//    for (int i = 0; i < sz; i++) {
+//        printf("\n%ld", ind[i]);
+//    }
+    
+    vcode_init();
+    temp_rewrite_audio();
+    
+    for(int i = 0; i < sz; i++){ //i is the frame index of test data
+        vcode_synth_frame_var((int) ind[i], 1);
+    }
+    
+    FILE *fp = fopen(recons_name, "w");
+    
+    for (int i = 0; i < sz; i++){
+        AUDIO_FEATURE af = database_feature_list.el[ind[i]];
+        fprintf(fp,"%d\t%d\t%f\t%f\t%d\t%d\n", i, ind[i], af.hz, af.amp, af.nominal, af.onset);
+    }
+    fclose(fp);
+    
+    
+}
+
 
 void resynth_solo_phase_vocoder(AUDIO_FEATURE_LIST database_feature_list) {
+    synth_jukebox_pv(database_feature_list);
+    exit(0);
     char target_name[200];
     char recons_name[200];
     char spectral_name[200];
@@ -590,7 +639,7 @@ void resynth_solo_phase_vocoder(AUDIO_FEATURE_LIST database_feature_list) {
     }
 
     
-    build_best_path(best, database_feature_list, n_best);
+//    build_best_path(best, database_feature_list, n_best);
     
     /* temp database storage on disk */
     char *database_file[200];
@@ -599,12 +648,12 @@ void resynth_solo_phase_vocoder(AUDIO_FEATURE_LIST database_feature_list) {
     FILE *fd;
     
     /*temp write to disk*/
-    fd = fopen(database_file, "wb");
-    for (int i = 0; i < database_feature_list.num; i++) {
-        if(fwrite(best[i], sizeof(int), n_best, fd) != n_best)
-            printf("File write error.");
-    }
-    fclose(fd);
+//    fd = fopen(database_file, "wb");
+//    for (int i = 0; i < database_feature_list.num; i++) {
+//        if(fwrite(best[i], sizeof(int), n_best, fd) != n_best)
+//            printf("File write error.");
+//    }
+//    fclose(fd);
     
     /* temp read from disk */
     fd = fopen(database_file, "rb");
@@ -620,7 +669,6 @@ void resynth_solo_phase_vocoder(AUDIO_FEATURE_LIST database_feature_list) {
 //            printf("%d\t", best[i][j]);
 //        }
 //    }
-    
 
     float penalty = 100;
     float pitch_penalty = 10000;
