@@ -294,8 +294,8 @@ static float frame_feature_dist_database(AUDIO_FEATURE ff1, AUDIO_FEATURE ff2, A
         spect_dis = partial_modulus_dist(ff1, ff2); //max in all of database is 241
     }
     else spect_dis = (float) euclid_dist(ff1.spectral, ff2.spectral, spect_feature_dim);
-    
-    return fabsf(ff1.hz - ff2.hz) + 50 *fabsf(amp1 - amp2) + 50 *spect_dis;
+    return spect_dis;
+//    return fabsf(ff1.hz - ff2.hz) + 50 *fabsf(amp1 - amp2) + 1000 *spect_dis;
 }
 
 static float frame_feature_dist(AUDIO_FEATURE ff1, AUDIO_FEATURE ff2, AUDIO_FEATURE_LIST target, AUDIO_FEATURE_LIST source){
@@ -503,13 +503,37 @@ static int cmp_pair(void *ptr1, void *ptr2){
     else return 1;
 }
 
-static void build_best_path(int **best, AUDIO_FEATURE_LIST list, int num){
+static void build_best_path_varsize(GRAPH_NODE *best, AUDIO_FEATURE_LIST list, float maxdis) {
     PAIR *p = malloc(list.num *sizeof(PAIR));
     
     
-    if (strcmp(feature_choice, "bins") == 0) {
+    for(int i = 0; i < list.num; i++){
+        AUDIO_FEATURE f = list.el[i];
         
+        for(int j = 0; j < list.num; j++){
+            AUDIO_FEATURE f2 = list.el[j];
+            PAIR temp;
+            temp.index = j;
+            temp.score = frame_feature_dist_database(f, f2, list, list);
+            p[j] = temp;
+        }
+        qsort(p, list.num, sizeof(PAIR), cmp_pair);
+        
+        int num = 0;
+
+        while (++num < list.num && p[num].score < maxdis);
+        
+        best->el = (int*) malloc (num * sizeof(int));
+        
+        for(int j = 0; j < num; j++){
+            best->el[j] = p[j].index; //best *preceding* frames
+        }
     }
+    free(p);
+}
+
+static void build_best_path(int **best, AUDIO_FEATURE_LIST list, int num){
+    PAIR *p = malloc(list.num *sizeof(PAIR));
     
     for(int i = 0; i < list.num; i++){
         AUDIO_FEATURE f = list.el[i];
@@ -546,10 +570,35 @@ void resynth_solo_dtw() {
     fclose(fp);
 }
 
+void write_spectral_dist(char *name, long *ind, int len, AUDIO_FEATURE_LIST list) {
+    FILE *fp = fopen(name, "w");
+    float dist;
+    AUDIO_FEATURE f1, f2;
+    for (int i = 0; i < len-1; i++) {
+        f1 = list.el[i];
+        f2 = list.el[i+1];
+        dist = frame_feature_dist_database(f1, f2, list, list);
+        //dist = partial_modulus_dist(f1, f2);
+        fprintf(fp, "%d\t%f\n", i, dist);
+    }
+    fclose(fp);
+}
+
 void synth_jukebox_pv(AUDIO_FEATURE_LIST database_feature_list) {
     long* ind;
     char name[200];
     char recons_name[200];
+    char spect_name[200];
+    
+    strcpy(name, user_dir);
+    strcat(name, "jukebox_ind");
+    
+    strcpy(spect_name, user_dir);
+    strcat(spect_name, "python/");
+    strcat(spect_name, player);
+    strcat(spect_name, "_");
+    strcat(spect_name, current_examp);
+    strcat(spect_name, ".spectdist");
     
     strcpy(recons_name, user_dir);
     strcat(recons_name, "python/");
@@ -558,9 +607,7 @@ void synth_jukebox_pv(AUDIO_FEATURE_LIST database_feature_list) {
     strcat(recons_name, current_examp);
     strcat(recons_name, ".jbxreconstruction");
     
-    strcpy(name, user_dir);
-    strcat(name, "jukebox_ind");
-    
+    /* read in frame indices */
     FILE *fd;
     fd = fopen(name, "rb");
     fseek(fd, 0L, SEEK_END);
@@ -571,10 +618,8 @@ void synth_jukebox_pv(AUDIO_FEATURE_LIST database_feature_list) {
     
     int f = fread(ind, sizeof(long), sz, fd);
     fclose(fd);
-//    for (int i = 0; i < sz; i++) {
-//        printf("\n%ld", ind[i]);
-//    }
     
+    /* run phase vocoder*/
     vcode_init();
     temp_rewrite_audio();
     
@@ -582,6 +627,7 @@ void synth_jukebox_pv(AUDIO_FEATURE_LIST database_feature_list) {
         vcode_synth_frame_var((int) ind[i], 1);
     }
     
+    /* write reconstruction features */
     FILE *fp = fopen(recons_name, "w");
     
     for (int i = 0; i < sz; i++){
@@ -590,13 +636,15 @@ void synth_jukebox_pv(AUDIO_FEATURE_LIST database_feature_list) {
     }
     fclose(fp);
     
+    /* write frame-by-frame spectral distances */
+    write_spectral_dist(spect_name, ind, sz, database_feature_list);
     
 }
 
 
 void resynth_solo_phase_vocoder(AUDIO_FEATURE_LIST database_feature_list) {
-    synth_jukebox_pv(database_feature_list);
-    exit(0);
+//    synth_jukebox_pv(database_feature_list);
+//    exit(0);
     char target_name[200];
     char recons_name[200];
     char spectral_name[200];
@@ -615,7 +663,6 @@ void resynth_solo_phase_vocoder(AUDIO_FEATURE_LIST database_feature_list) {
     strcat(recons_name, "_");
     strcat(recons_name, current_examp);
     strcat(recons_name, ".reconstruction");
-    
     
     
     AUDIO_FEATURE_LIST saved_feature_list;
@@ -638,8 +685,8 @@ void resynth_solo_phase_vocoder(AUDIO_FEATURE_LIST database_feature_list) {
         }
     }
 
-    
-//    build_best_path(best, database_feature_list, n_best);
+    build_best_path_varsize(best, database_feature_list, 0.1);
+    build_best_path(best, database_feature_list, n_best);
     
     /* temp database storage on disk */
     char *database_file[200];
@@ -648,12 +695,12 @@ void resynth_solo_phase_vocoder(AUDIO_FEATURE_LIST database_feature_list) {
     FILE *fd;
     
     /*temp write to disk*/
-//    fd = fopen(database_file, "wb");
-//    for (int i = 0; i < database_feature_list.num; i++) {
-//        if(fwrite(best[i], sizeof(int), n_best, fd) != n_best)
-//            printf("File write error.");
-//    }
-//    fclose(fd);
+    fd = fopen(database_file, "wb");
+    for (int i = 0; i < database_feature_list.num; i++) {
+        if(fwrite(best[i], sizeof(int), n_best, fd) != n_best)
+            printf("File write error.");
+    }
+    fclose(fd);
     
     /* temp read from disk */
     fd = fopen(database_file, "rb");

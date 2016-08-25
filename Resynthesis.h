@@ -45,6 +45,11 @@ typedef struct {
     AMPLITUDE amplitude;
 } AUDIO_FEATURE_LIST;
 
+typedef struct {
+    int num;
+    int *el;
+} GRAPH_NODE;
+
 void init_feature_list(AUDIO_FEATURE_LIST *a, char* choice);
 
 void prep_cal_feature(int frame, unsigned char* audioname);
