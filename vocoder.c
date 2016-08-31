@@ -567,6 +567,7 @@ static void append_features(char *name, char* spectral_name, char* fftmod_name, 
 
     fclose(fp);
     fclose(sp);
+    fclose(mp);
     
 }
 

@@ -61,6 +61,7 @@ void init_feature_list(AUDIO_FEATURE_LIST *a, char* choice) {
     else if (strcmp(feature_choice, "mfcc") == 0) spect_feature_dim = 20;
     else if (strcmp(feature_choice, "bins") == 0) spect_feature_dim = 3;
     else if (strcmp(feature_choice, "cqt") == 0) spect_feature_dim = 84;
+    else if (strcmp(feature_choice, "cosine") == 0) spect_feature_dim = 3;
     else {
         printf("\nneed valid feature choice");
         exit(0);
@@ -75,7 +76,8 @@ void cal_amplitude_dist(AUDIO_FEATURE_LIST *list, int frames) {
 
     /* copy the values into arrays of doubles */
     for (int i = 0; i < list->num; i++){
-        if (list->el[i].amp < 0.001) continue; //remove silent frames
+//        if (list->el[i].amp < 0.001) continue; //remove silent frames ???
+        if (list->el[i].amp <=0) continue; //remove silent frames
         amp[ind] = (double) logf(list->el[i].amp);
         nom[ind] = (double) list->el[i].nominal;
         ind++;
