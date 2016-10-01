@@ -30,7 +30,11 @@
 #define ON_SOLO 0
 #define ON_ACCOMP 1
 #define BUILD 0
-
+#define MAXDIS 39
+#define MAX_SPLICE_CHANGE 39
+#define JUKEBOX 0
+#define SYNTH_TARGET 0
+#define WRITE_DIST 0
 
 int cur_play_frame_num;
 int start_play_frame_num;
@@ -265,6 +269,47 @@ float feuclid_dist(float* v1, float* v2, int len) {
     return sum;
 }
 
+float partial_modulus_dist_neighborhood_sum(AUDIO_FEATURE ff1, AUDIO_FEATURE ff2) {
+    float totaldist = 0;
+    int b1, b2;
+    float p[2*spect_feature_dim], q[2*spect_feature_dim];
+//    for (int k = 0; k < 100; k++) {
+//        printf("\n fft1 at %d = %f", k, ff1.fft_mod[k]);
+//        printf("\n fft2 at %d = %f", k, ff2.fft_mod[k]);
+//    }
+    for (int i = 0; i < spect_feature_dim; i++) {
+        p[i] = q[i] = p[i+spect_feature_dim] = q[i+spect_feature_dim] = 0;
+        b1 = (int) ff1.spectral[i];
+//        printf("\nb1 = %d", b1);
+//        for (int j = max(1,b1 - (int) 1/3.0 * b1); j < min(4096,b1 + (int) 1/3.0 * b1); j++) {
+        for (int j = max(1,b1 - 2); j <= min(4096,b1 + 2); j++) {
+
+            p[i] += ff1.fft_mod[j];
+//            printf("\n p[%d] += %f", j, ff1.fft_mod[j]);
+            q[i] += ff2.fft_mod[j];
+//            printf("\n q[%d] += %f", j, ff2.fft_mod[j]);
+        }
+//        printf("\nsum p[%d] = %f", i, p[i]);
+//        printf("\nsum q[%d] = %f", i, q[i]);
+        b2 = (int) ff2.spectral[i];
+//        printf("\nb2 = %d", b2);
+        for (int j = max(1,b2 - 2); j <= min(4096,b2 + 2); j++) {
+            p[i+spect_feature_dim] += ff1.fft_mod[j];
+//            printf("\n p[%d] += %f", j, ff1.fft_mod[j]);
+            q[i+spect_feature_dim] += ff2.fft_mod[j];
+//            printf("\n q[%d] += %f", j, ff2.fft_mod[j]);
+        }
+//        printf("\nsum p[%d] = %f", i+spect_feature_dim, p[i+spect_feature_dim]);
+//        printf("\nsum q[%d] = %f", i+spect_feature_dim, q[i+spect_feature_dim]);
+    }
+//    for (int k = 0; k < 2*spect_feature_dim; k++){
+//        printf("\np[%d] = %f", k, p[k]);
+//        printf("\nq[%d] = %f", k, q[k]);
+//    }
+//    printf("\n%f", feuclid_dist(p, q, 2*spect_feature_dim) );
+    return feuclid_dist(p, q, 2*spect_feature_dim);
+}
+
 float partial_modulus_dist(AUDIO_FEATURE ff1, AUDIO_FEATURE ff2) {
     float totaldist = 0;
     int b1, b2;
@@ -288,6 +333,23 @@ float partial_modulus_dist(AUDIO_FEATURE ff1, AUDIO_FEATURE ff2) {
     return totaldist;
 }
 
+float partial_modulus_dist_bin_only(AUDIO_FEATURE ff1, AUDIO_FEATURE ff2) {
+    spect_feature_dim = 3;
+    float totaldist = 0;
+    int b1, b2;
+    float p[2*spect_feature_dim], q[2*spect_feature_dim];
+    for (int i = 0; i < spect_feature_dim; i++) {
+        b1 = max(1,(int) ff1.spectral[i]);
+        b2 = max(1,(int) ff2.spectral[i]);
+        p[i] = ff1.fft_mod[b1];
+        q[i] = ff2.fft_mod[b1];
+        p[i+spect_feature_dim] = ff1.fft_mod[b2];
+        q[i+spect_feature_dim] = ff2.fft_mod[b2];
+    }
+    totaldist = feuclid_dist(p, q, 2*spect_feature_dim);
+    return totaldist;
+}
+
 float cosine_similarity(float *A, float *B, int Vector_Length)
 {
     float dot = 0.0, denom_a = 0.0, denom_b = 0.0 ;
@@ -299,8 +361,20 @@ float cosine_similarity(float *A, float *B, int Vector_Length)
     return dot / (sqrtf(denom_a) * sqrtf(denom_b)) ;
 }
 
+double cosine_similarity_double(double *A, double *B, int Vector_Length)
+{
+    double dot = 0.0, denom_a = 0.0, denom_b = 0.0 ;
+    for(int i = 0; i < Vector_Length; ++i) {
+        dot += A[i] * B[i] ;
+        denom_a += A[i] * A[i] ;
+        denom_b += B[i] * B[i] ;
+    }
+    return dot / (sqrt(denom_a) * sqrt(denom_b)) ;
+}
+
+
 float partial_cosine_dist(AUDIO_FEATURE ff1, AUDIO_FEATURE ff2) {
-    float a[6], b[6];
+    float a[2*spect_feature_dim], b[2*spect_feature_dim];
     int range = 3, b1, b2;
     for (int i = 0; i < spect_feature_dim; i++) {
         a[i] = b[i] = a[i+spect_feature_dim] = b[i+spect_feature_dim] = 0;
@@ -316,6 +390,25 @@ float partial_cosine_dist(AUDIO_FEATURE ff1, AUDIO_FEATURE ff2) {
     return 1 - cosine_similarity(a, b, 2*spect_feature_dim);
 }
 
+float partial_cosine_dist_all(AUDIO_FEATURE ff1, AUDIO_FEATURE ff2) {
+    spect_feature_dim = 3;
+    float a[2*spect_feature_dim], b[2*spect_feature_dim];
+    int range = 3, b1, b2;
+    for (int i = 0; i < spect_feature_dim; i++) {
+        b1 = max(1,(int) ff1.spectral[i]);
+        b2 = max(1,(int) ff2.spectral[i]);
+        a[i] = ff1.fft_mod[b1];
+        b[i] = ff2.fft_mod[b1];
+        a[i+spect_feature_dim] = ff1.fft_mod[b2];
+        b[i+spect_feature_dim] = ff2.fft_mod[b2];
+    }
+    return max(0, 1 - cosine_similarity(a, b, 2*spect_feature_dim));
+}
+
+float spectral_cosine_dist(AUDIO_FEATURE ff1, AUDIO_FEATURE ff2) {
+    return (float) (max(0, 1 - cosine_similarity_double(ff1.spectral, ff2.spectral, spect_feature_dim)));
+}
+
 static float frame_feature_dist_database(AUDIO_FEATURE ff1, AUDIO_FEATURE ff2, AUDIO_FEATURE_LIST target, AUDIO_FEATURE_LIST source){
     float amp1, amp2;
     float spect_dis;
@@ -329,19 +422,22 @@ static float frame_feature_dist_database(AUDIO_FEATURE ff1, AUDIO_FEATURE ff2, A
     amp1 = cdf_gauss( (logf(ff1.amp) - (float)target.amplitude.mu[ff1.nominal])/(float)target.amplitude.sd[ff1.nominal] );
     amp2 = cdf_gauss( (logf(ff2.amp) - (float)source.amplitude.mu[ff2.nominal])/(float)source.amplitude.sd[ff2.nominal] );
     if (strcmp(feature_choice, "bins") == 0) {
-        spect_dis = partial_modulus_dist(ff1, ff2); //max in all of database is 241
+//        spect_dis = partial_modulus_dist(ff1, ff2); //max in all of database is 241
+//        spect_dis = partial_modulus_dist_bin_only(ff1, ff2);
+        spect_dis = partial_modulus_dist_neighborhood_sum(ff1, ff2);
     }
     else if (strcmp(feature_choice, "cosine") == 0) {
-        spect_dis = partial_cosine_dist(ff1, ff2);
+        spect_dis = partial_cosine_dist_all(ff1, ff2);
     }
     else spect_dis = (float) euclid_dist(ff1.spectral, ff2.spectral, spect_feature_dim);
+//    else spect_dis = spectral_cosine_dist(ff1, ff2);
     return spect_dis;
 //    return fabsf(ff1.hz - ff2.hz) + 50 *fabsf(amp1 - amp2) + 1000 *spect_dis;
 }
 
 static float frame_feature_dist(AUDIO_FEATURE ff1, AUDIO_FEATURE ff2, AUDIO_FEATURE_LIST target, AUDIO_FEATURE_LIST source){
     float amp1, amp2;
-
+    
     if (ff1.onset == 0 && ff2.onset == 1) return -1;
     
     if (ff1.amp < 0.001 || ff2.amp < 0.001) return -1;
@@ -351,9 +447,18 @@ static float frame_feature_dist(AUDIO_FEATURE ff1, AUDIO_FEATURE ff2, AUDIO_FEAT
     
     /* normal quantile */
     amp1 = cdf_gauss( (logf(ff1.amp) - (float)target.amplitude.mu[ff1.nominal])/(float)target.amplitude.sd[ff1.nominal] );
+    amp1 = min(1, amp1+0.3);
     amp2 = cdf_gauss( (logf(ff2.amp) - (float)source.amplitude.mu[ff2.nominal])/(float)source.amplitude.sd[ff2.nominal] );
     
+//    if (amp2/amp1 > 1.7) return -1;
+    
+//    return fabsf(ff1.hz - ff2.hz);
+//    return 10 * fabsf(12*logf(ff1.hz/440.0)/logf(2) - 12*logf(ff2.hz/440.0)/logf(2));
+    
+//    return 50*fabsf(amp1 - amp2);
+//    return 10 * fabsf(12*logf(ff1.hz/440.0)/logf(2) - 12*logf(ff2.hz/440.0)/logf(2)) + 50*fabsf(amp1 - amp2);
     return fabsf(ff1.hz - ff2.hz) + 50*fabsf(amp1 - amp2);
+
 }
 
 static float frame_feature_dist_continuous(AUDIO_FEATURE ff1, AUDIO_FEATURE ff2, AUDIO_FEATURE_LIST target, AUDIO_FEATURE_LIST source){
@@ -428,6 +533,35 @@ static int find_closest_frame_index(AUDIO_FEATURE f, AUDIO_FEATURE_LIST database
     return(opt);
 }
 
+//void scale_amplitudes(char *name, char *new_file, float ratio) {
+//    int frame;
+//    float hz, amp, nominal, onset;
+//    
+//    FILE *fp, *np;
+//    fp = fopen(name, "r");
+//    if (fp == NULL) { printf("can't open %s\n",name); return; }
+//    np = fopen(new_file, "w");
+//    if (np == NULL) { printf("can't open %s\n",new_file); return; }
+//    
+//    int frames = 0;
+//    fscanf(fp,"Total number of frames: %d\n",&frames);
+//    fprintf(np,"Total number of frames: %d\n",frames);
+//    
+//    while (feof(fp) == 0) {
+//        fscanf(fp, "%d\t%f\t%f\t%d\t%d\n", &frame, &hz, &amp, &nominal, &onset);
+//        
+//        if (nominal != -1) {
+//            nominal = floorf(nominal * pow(2, semitones/(float) 12)); //???need to make sure that the nominal pitches match ones computed by program, using floor, not round
+//            hz = floorf(hz * pow(2, semitones/(float) 12));
+//        }
+//        fprintf(np, "%d\t%f\t%f\t%d\t%d\n", frame, hz, amp, nominal, onset);
+//        
+//    }
+//    
+//    fclose(fp);
+//    fclose(np);
+//}
+
 void transpose_features(char *name, char *new_file, int semitones) {
     
     int frame;
@@ -473,7 +607,7 @@ static void read_features(char *name, char *spectral_name, char *fftmod_name, AU
     
     char modulus_file_name[200];
     FILE *mp;
-    if (strcmp(feature_choice, "bins") == 0) {
+    if (strcmp(feature_choice, "bins") == 0 || strcmp(feature_choice, "cosine") == 0) {
         mp = fopen(fftmod_name, "rb");
         if (mp == NULL) { printf("can't open %s\n",fftmod_name); return; }
     }
@@ -485,17 +619,16 @@ static void read_features(char *name, char *spectral_name, char *fftmod_name, AU
     while (feof(fp) == 0) {
         fscanf(fp, "%d\t%f\t%f\t%d\t%d\n", &af.frame, &af.hz, &af.amp, &af.nominal, &af.onset);
         
-        if(af.hz == -1 || af.nominal == -1) continue; //skip over useless frames
-        
         /* read in spectral data */
         af.spectral = (double*) malloc (spect_feature_dim*sizeof(double));
         fread(af.spectral, sizeof(double), spect_feature_dim, sp);
         
-        if (strcmp(feature_choice, "bins") == 0) {
+        if (strcmp(feature_choice, "bins") == 0 || strcmp(feature_choice, "cosine") == 0) {
             af.fft_mod = (float*) malloc (2049*sizeof(float));
             fread(af.fft_mod, sizeof(float), 2049, mp);
         }
         
+        if(af.hz == -1 || af.nominal == -1) continue; //skip over useless frames         
         list->el[list->num++] = af;
         count++;
         
@@ -512,7 +645,7 @@ static void read_features(char *name, char *spectral_name, char *fftmod_name, AU
     
     fclose(fp);
     fclose(sp);
-    fclose(mp);
+    if (strcmp(feature_choice, "bins") == 0 || strcmp(feature_choice, "cosine") == 0) fclose(mp);
 }
 
 
@@ -581,14 +714,14 @@ static void build_best_path_varsize(GRAPH_NODE *best, AUDIO_FEATURE_LIST list, f
             num++;
         };
         
-        //if (num == 0) num = 1; //avoid zero-length connections
-    
         if (num > tempmax) tempmax = num;
         best[i].num = num;
         best[i].el = (int*) malloc (num * sizeof(int));
+        best[i].dis = (float*) malloc (num * sizeof(float));
         
         for(int j = 0; j < num; j++){
             best[i].el[j] = p[j].index; //best *preceding* frames
+            best[i].dis[j] = p[j].score;
         }
         
     }
@@ -626,7 +759,7 @@ void resynth_solo_dtw() {
     int ind;
     FILE *fp;
     char file[200];
-    strcpy(file,"/Users/apple/Documents/mir/path.txt");
+    strcpy(file,"/Users/apple/Documents/Performance-View/user/python/path.txt");
     vcode_init();
     temp_rewrite_audio();
     fp = fopen(file, "r");
@@ -634,6 +767,19 @@ void resynth_solo_dtw() {
         fscanf(fp,"%d\n",&ind);
         vcode_synth_frame_var(ind, 1);
 
+    }
+    fclose(fp);
+}
+
+void write_amplitudes(char *name, int len, AUDIO_FEATURE_LIST list) {
+    FILE *fp = fopen(name, "w");
+    float amp;
+    AUDIO_FEATURE ff1;
+    for (int i = 1; i < len; i++) {
+        ff1 = list.el[i];
+        if (ff1.amp <=0) amp = 0;
+        else amp = cdf_gauss( (logf(ff1.amp) - (float)list.amplitude.mu[ff1.nominal])/(float)list.amplitude.sd[ff1.nominal] );
+        fprintf(fp, "%d\t%f\n", i, amp);
     }
     fclose(fp);
 }
@@ -647,7 +793,10 @@ void write_spectral_dist(char *name, long *ind, int len, AUDIO_FEATURE_LIST list
         f2 = list.el[(int) ind[i+1]];
         dist = frame_feature_dist_database(f1, f2, list, list);
         //dist = partial_modulus_dist(f1, f2);
-        fprintf(fp, "%d\t%f\n", i, dist);
+//        dist = fabs(f1.amp - f2.amp);
+//        fprintf(fp, "%d\t%f\n", i, dist);
+        fprintf(fp, "%f\n", dist);
+
     }
     fclose(fp);
 }
@@ -660,6 +809,7 @@ void write_target_spectral_dist(char *name, float *dis, int len) {
     }
     fclose(fp);
 }
+
 
 void synth_jukebox_pv(AUDIO_FEATURE_LIST database_feature_list) {
     long* ind;
@@ -677,9 +827,7 @@ void synth_jukebox_pv(AUDIO_FEATURE_LIST database_feature_list) {
     
     strcpy(recons_name, user_dir);
     strcat(recons_name, "python/");
-    strcat(recons_name, player);
-    strcat(recons_name, "_");
-    strcat(recons_name, current_examp);
+    strcat(recons_name, "jukebox");
     strcat(recons_name, ".jbxreconstruction");
     
     /* read in frame indices */
@@ -689,10 +837,33 @@ void synth_jukebox_pv(AUDIO_FEATURE_LIST database_feature_list) {
     int sz = ftell(fd)/sizeof(long);
     rewind(fd);
     
+    sz = 5000;
     ind = (long*) malloc (sz * sizeof(long));
     
     int f = fread(ind, sizeof(long), sz, fd);
     fclose(fd);
+    
+    /* read in file of indices */
+    fd = fopen("/Users/apple/Documents/Performance-View/user/python/temp_indices.txt", "r");
+    int temp = 0, count = 0;
+    while (1) {
+        fscanf(fd,"\n%d",&temp);
+        
+        ind[count] = (long) temp;
+        count++;
+        if (feof(fd)) break;
+        
+    }
+    fclose(fd);
+
+
+//    long temp[] = {15929, 12776, 15587, 14264, 14413, 14167, 166, 5106, 5155, 28910, 20000, 20000,
+//        20495, 36441, 36490, 20489, 20538, 20565, 9951, 5986, 28223, 28240, 28289, 30904, 23691,
+//    23714, 23763, 25116, 33614, 33608, 9184, 8650};
+//    
+//    for (int i = 0; i < 32; i++) {
+//        ind[i] = temp[i];
+//    }
     
     /* run phase vocoder*/
     vcode_init();
@@ -705,36 +876,32 @@ void synth_jukebox_pv(AUDIO_FEATURE_LIST database_feature_list) {
     /* write reconstruction features */
     FILE *fp = fopen(recons_name, "w");
     
-    for (int i = 0; i < sz; i++){
-        AUDIO_FEATURE af = database_feature_list.el[ind[i]];
-        fprintf(fp,"%d\t%d\t%f\t%f\t%d\t%d\n", i, ind[i], af.hz, af.amp, af.nominal, af.onset);
+    for (int i = 0; i < count; i++){
+        AUDIO_FEATURE af = database_feature_list.el[(int) ind[i]];
+//        float amp1 = cdf_gauss( (logf(af.amp) - (float)database_feature_list.amplitude.mu[af.nominal])/(float)database_feature_list.amplitude.sd[af.nominal] );
+        
+        
+        int hz0 = (int) (pow(2,((af.nominal - 69)/12.0)) * 440);
+        /* quick fix for pitch: */
+        if (af.hz/hz0 > 1.025593 || af.hz/hz0 < 0.9750456) //pitches more than a 7/16 tone apart
+            fprintf(fp,"%f\n", hz0);
+        else fprintf(fp,"%f\n", af.hz);
+//        fprintf(fp,"%d\t%d\t%f\t%f\t%d\t%d\n", i, ind[i], af.hz, amp1, af.nominal, af.onset);
     }
     fclose(fp);
     
     /* write frame-by-frame spectral distances */
     write_spectral_dist(spect_name, ind, sz, database_feature_list);
-    
 }
 
-
-void resynth_solo_phase_vocoder(AUDIO_FEATURE_LIST database_feature_list) {
-    int jukebox = 0;
-    if (jukebox == 1) {
-        synth_jukebox_pv(database_feature_list);
-        exit(0);
-    }
-    char target_name[200];
-    char recons_name[200];
-    char spectral_name[200]; //spectral features
-    char dist_name[200]; //distance between consecutive database frames
-    char target_dist_name[200]; //distance between consecutive target frames
-    char target_source_dist_name[200]; //distance between target and database
-    char modulus_file_name[200];
-    
+void init_pv_filenames(char *target_name, char *recons_name, char *spectral_name, char *dist_name, char *target_dist_name, char *target_source_dist_name, char *modulus_file_name, char *database_file, char *database_amp_name) {
     strcpy(spectral_name,audio_data_dir);
     strcat(spectral_name,current_examp);
     strcat(spectral_name, ".");
-    strcat(spectral_name,feature_choice);
+    if (strcmp(feature_choice, "bins") == 0 || strcmp(feature_choice, "cosine") == 0)
+        strcat(spectral_name,"bins7");
+    else
+        strcat(spectral_name,feature_choice);
     
     strcpy(modulus_file_name,audio_data_dir);
     strcat(modulus_file_name,current_examp);
@@ -779,19 +946,85 @@ void resynth_solo_phase_vocoder(AUDIO_FEATURE_LIST database_feature_list) {
     strcat(recons_name, current_examp);
     strcat(recons_name, ".reconstruction");
     
+    strcpy(database_file, user_dir);
+    strcat(database_file, "database_graph_fftbins_neighborhood_sum2");
     
+    strcpy(database_amp_name, user_dir);
+    strcat(database_amp_name, "python/");
+    strcat(database_amp_name, "database_amplitudes");
+}
+
+void write_f2f_dist(AUDIO_FEATURE_LIST saved_feature_list) {
+    
+    char index_name[200];
+    strcpy(index_name,user_dir);
+    strcat(index_name,"python/");
+    strcat(index_name,current_examp);
+    strcat(index_name,".distances");
+    
+    FILE *fp;
+    fp = fopen(index_name, "w");
+    
+    for(int i = 1; i < saved_feature_list.num-1; i++){ //i is the frame index of test data
+        //if (i > 4500) continue;
+        AUDIO_FEATURE f1 = saved_feature_list.el[i];
+        AUDIO_FEATURE f2 = saved_feature_list.el[i+1];
+        
+        if (f1.nominal == -1 || f1.amp < 0.001) continue;
+        
+        float dis = frame_feature_dist_database(f1, f2, saved_feature_list, saved_feature_list);
+        //        fprintf(fp,"%d\n",i);
+        fprintf(fp,"%f\n",dis);
+        
+    }
+    fclose(fp);
+
+}
+
+void resynth_solo_phase_vocoder(AUDIO_FEATURE_LIST database_feature_list) {
+    if (JUKEBOX == 1) {
+        synth_jukebox_pv(database_feature_list);
+        exit(0);
+    }
+
+
+    char target_name[200];
+    char recons_name[200];
+    char spectral_name[200]; //spectral features
+    char dist_name[200]; //distance between consecutive database frames
+    char target_dist_name[200]; //distance between consecutive target frames
+    char target_source_dist_name[200]; //distance between target and database
+    char modulus_file_name[200];
+    char database_file[200];
+    char database_amp_name[200];
+    
+    /*initialize all the file paths */
+    init_pv_filenames(target_name, recons_name, spectral_name, dist_name, target_dist_name, target_source_dist_name, modulus_file_name, database_file, database_amp_name);
+    
+    /*save amplitude quantiles to disk */
+//    write_amplitudes(database_amp_name, database_feature_list.num, database_feature_list);
+    
+    /*read in target data */
     AUDIO_FEATURE_LIST saved_feature_list;
     init_feature_list(&saved_feature_list, feature_choice);
-    
     read_features(target_name, spectral_name, modulus_file_name, &saved_feature_list, &saved_feature_list.mu, &saved_feature_list.var, &saved_feature_list.sd);
     
+    /*init resynthesis audio files */
     vcode_init();
     temp_rewrite_audio();
+    
+    if (SYNTH_TARGET == 1) {
+        synth_continuous_target(saved_feature_list);
+        exit(0);
+    }
+    if (WRITE_DIST == 1) {
+        write_f2f_dist(saved_feature_list);
+        exit(0);
+    }
     
     int n_best = 100;
     float **score = malloc_float_matrix(saved_feature_list.num, database_feature_list.num);
     int **prev = malloc_int_matrix(saved_feature_list.num, database_feature_list.num);
-    //int **best = malloc_int_matrix(database_feature_list.num, n_best);
     GRAPH_NODE *best = (GRAPH_NODE*) malloc (database_feature_list.num * sizeof(GRAPH_NODE));
     
     for(int i = 0; i < saved_feature_list.num; i++){
@@ -800,76 +1033,71 @@ void resynth_solo_phase_vocoder(AUDIO_FEATURE_LIST database_feature_list) {
             prev[i][j] = -1;
         }
     }
-
-    float maxdis = 0.1;
     
     /* temp database storage on disk */
-    char *database_file[200];
-    strcpy(database_file, user_dir);
-    strcat(database_file, "database_graph");
-    FILE *fd;
-    
-    char *database_dist_file[200];
-    strcpy(database_dist_file, user_dir);
-    strcat(database_dist_file, "database_dist_graph");
-    FILE *fe;
-    
-
     if (BUILD == 1) {
-        build_best_path_varsize(best, database_feature_list, maxdis);
-        //build_best_path(best, database_feature_list, n_best);
+        build_best_path_varsize(best, database_feature_list, MAXDIS);
         /*temp write to disk*/
+        FILE *fd;
         fd = fopen(database_file, "wb");
         for (int i = 0; i < database_feature_list.num; i++) {
             fwrite(&best[i].num, sizeof(int), 1, fd);
             fwrite(best[i].el, sizeof(int), best[i].num, fd);
+            fwrite(best[i].dis, sizeof(float), best[i].num, fd);
         }
         fclose(fd);
-        fe = fopen(database_file, "wb");
-        for (int i = 0; i < database_feature_list.num; i++) {
-            fwrite(&best[i].num, sizeof(int), 1, fe);
-            fwrite(best[i].el, sizeof(int), best[i].num, fe);
-        }
-        fclose(fe);
     }
     else {
         /* temp read from disk */
+        FILE *fd;
         fd = fopen(database_file, "rb");
         for (int i = 0; i < database_feature_list.num; i++) {
             fread(&best[i].num, sizeof(int), 1, fd);
-            printf("\nbest.num%d", best[i].num);
             best[i].el = (int*) malloc (best[i].num * sizeof(int));
             if(fread(best[i].el, sizeof(int), best[i].num, fd) != best[i].num)
                 printf("File reading error.");
-            printf("\n");
-            for (int j = 0; j < best[i].num; j++) {
-                printf("\t%d", best[i].el[j]);
-            }
+            best[i].dis = (float*) malloc (best[i].num * sizeof(float));
+            if(fread(best[i].dis, sizeof(float), best[i].num, fd) != best[i].num)
+                printf("File reading error.");
         }
         fclose(fd);
     }
 
     float penalty = 100;
-    float repetition_penalty = 30;
+    float repetition_penalty = 70;
     float pitch_penalty = 10000;
     float trans_penalty = 10000;
     float timbre_change_penalty = 10000;
     int trans_interval = 10;
     int transp = -19;
-    float transp_ratio = 3.0; //need to combine these two
+    float transp_ratio = pow(2, -transp/(float)12); //need to combine these two
     float pv_ratio = 1;
     int ind = 1;
-    float max_change_ratio = 10;
-    long *frame_ind = (long*) malloc (saved_feature_list.num * sizeof(long));
-    float *target_dist = (float*) malloc(saved_feature_list.num * sizeof(float));
-    float *target2target_dist = (float*) malloc(saved_feature_list.num * sizeof(float));
+    float max_change_ratio = HUGE_VALF;
+    float max_database_change;
+    long *frame_ind = (long*) malloc (saved_feature_list.num * sizeof(long)); //stores reconstruction (database frame) indices
+    float *target_dist = (float*) malloc(saved_feature_list.num * sizeof(float)); //target to source frame-by-frame distances
+    float *target2target_dist = (float*) malloc(saved_feature_list.num * sizeof(float)); //target to target frame-by-frame distances
+    int pre_onset_len = 10;
+    int post_onset_len = 10;
 
     
     for(int i = 1; i < saved_feature_list.num; i++){
         
-        if (i > 600) continue;
+        if (ind > 2450) continue;
         
         AUDIO_FEATURE f1 = saved_feature_list.el[i];
+        
+        /*settings for the stamitz */
+//        if (f1.frame < 4151*SKIPLEN * 6 / (float) (HOP_LEN)) continue;
+//        if (f1.frame >= 4603*SKIPLEN * 6 / (float) (HOP_LEN) && f1.frame < 4735*SKIPLEN * 6 / (float) (HOP_LEN)) continue;
+//        if (f1.frame >= 4735*SKIPLEN * 6 / (float) (HOP_LEN)) {
+//            transp = -12;
+//            transp_ratio = pow(2, -transp/(float)12); //need to combine these two
+//        }
+//        if (f1.frame > 6000*SKIPLEN * 6 / (float) (HOP_LEN)) continue;
+                
+        
         f1.hz /= transp_ratio;//kludgy transposition
         if (f1.nominal == -1 || f1.amp < 0.001) continue;
         
@@ -880,24 +1108,49 @@ void resynth_solo_phase_vocoder(AUDIO_FEATURE_LIST database_feature_list) {
         };
         printf("\nn = %d\tf1.nom = %d\tf1-n.nom = %d", n, f1.nominal, saved_feature_list.el[i - n].nominal);
         
+        int approaching_target_onset = 0;
+        if (i < saved_feature_list.num - pre_onset_len) {
+            for (int v = 0; v < pre_onset_len; v++) {
+                if (saved_feature_list.el[i+v].onset == 1)
+                    approaching_target_onset = 1;
+            }
+        }
+        if (i >= post_onset_len) {
+            for (int v = 0; v < post_onset_len; v++) {
+                if (saved_feature_list.el[i-v].onset == 1)
+                    approaching_target_onset = 1;
+            }
+        }
+        
         for(int j = 0; j < database_feature_list.num; j++){
             
             AUDIO_FEATURE f2 = database_feature_list.el[j];
             
-            if (best[j].num == 0) continue;
+            if (best[j].num == 0)
+                continue;
             if(f2.nominal == -1 || f2.amp == -1) continue;
             
             /*temp fix to avoid pre-note-onset areas */
-//            int need_to_continue = 0;
-//            if (j < database_feature_list.num - 15) {
-//                for (int v = 0; v < 15; v++) {
-//                    if (database_feature_list.el[j+v].onset == 1)
-//                        need_to_continue = 1;
-//                }
-//            }
-//            if (need_to_continue == 1) continue;
-            
-            
+            int approaching_database_onset = 0;
+            if (j < database_feature_list.num - pre_onset_len) {
+                for (int v = 0; v < pre_onset_len; v++) {
+                    if (database_feature_list.el[j+v].onset == 1)
+                        approaching_database_onset = 1;
+                }
+            }
+            if (j >= post_onset_len) {
+                for (int v = 0; v < post_onset_len; v++) {
+                    if (database_feature_list.el[j-v].onset == 1)
+                        approaching_database_onset = 1;
+                }
+            }
+
+            if (approaching_target_onset == 0) {
+                max_database_change = HUGE_VALF;
+                if (approaching_database_onset == 1) continue;
+            }
+            else max_database_change = HUGE_VALF;
+
             /* case where database frames are consecutive */
             float dis = frame_feature_dist(f1, f2, saved_feature_list, database_feature_list);
             if (dis < 0) continue; //hard constraints defined in frame_feature_dist
@@ -908,12 +1161,13 @@ void resynth_solo_phase_vocoder(AUDIO_FEATURE_LIST database_feature_list) {
             AUDIO_FEATURE f2_prev;
             if (i < saved_feature_list.num - 1) {
                 f1_change = frame_feature_dist_database(f1, saved_feature_list.el[i-1], saved_feature_list, saved_feature_list);
+                target2target_dist[ind] = f1_change;
             }
             
             f2_prev = database_feature_list.el[j-1];
             f2_change = frame_feature_dist_database(f2, f2_prev, database_feature_list, database_feature_list);
             
-            if (f2_change/f1_change <= max_change_ratio) {
+            if (f2_change/f1_change <= max_change_ratio && f2_change < max_database_change) {
                 if(j > 0 && score[i][j] > score[ind-1][j-1] + dis) {
                     int temp = score[ind-1][j-1];
                     score[ind][j] = score[ind-1][j-1] + dis;
@@ -932,9 +1186,8 @@ void resynth_solo_phase_vocoder(AUDIO_FEATURE_LIST database_feature_list) {
             
             for(int jj = 0; jj < best[j].num; jj++){
                 int index = best[j].el[jj];
-                f2_prev = database_feature_list.el[index];
-                f2_change = frame_feature_dist_database(f2, f2_prev, database_feature_list, database_feature_list);
-                if (f2_change/f1_change <= max_change_ratio) {
+//                if (best[j].dis[jj] > MAX_SPLICE_CHANGE) dis += timbre_change_penalty;
+                if (best[j].dis[jj]/f1_change <= max_change_ratio && best[j].dis[jj] < MAX_SPLICE_CHANGE) {
                     if(score[ind][j] > score[ind-1][index] + dis + penalty){
                         score[ind][j] = score[ind-1][index] + dis + penalty;
                         prev[ind][j] = index;
@@ -944,14 +1197,6 @@ void resynth_solo_phase_vocoder(AUDIO_FEATURE_LIST database_feature_list) {
         }
         ind++;
     }
-    
-//    for(int i = 0; i < saved_feature_list.num; i++){
-//        printf("\nscore: ");
-//        for(int j = 0; j < database_feature_list.num; j++){
-//            printf("%f\t", score[i][j]);
-//        }
-//    }
-    
     
     int i = ind - 1;
     float opt_score = HUGE_VAL;
@@ -986,7 +1231,13 @@ void resynth_solo_phase_vocoder(AUDIO_FEATURE_LIST database_feature_list) {
     
     for (int i = 1; i < ind - 1; i++){
         AUDIO_FEATURE af = database_feature_list.el[best_prev[i]];
-        fprintf(fp,"%d\t%d\t%f\t%f\t%d\t%d\n", i, best_prev[i], af.hz, af.amp, af.nominal, af.onset);
+        float amp1 = cdf_gauss( (logf(af.amp) - (float)database_feature_list.amplitude.mu[af.nominal])/(float)database_feature_list.amplitude.sd[af.nominal] );
+        
+        int hz0 = (int) (pow(2,((af.nominal - 69)/12.0)) * 440);
+        if (af.hz/hz0 > 1.025593 || af.hz/hz0 < 0.9750456)
+            af.hz = hz0;
+        
+        fprintf(fp,"%d\t%d\t%f\t%f\t%d\t%d\n", i, best_prev[i], af.hz, amp1, af.nominal, af.onset);
     }
     fclose(fp);
     
@@ -1521,7 +1772,9 @@ void calc_max_bin(int startpos, int endpos, int fbin) {
         //inst_fbin[j] = calc_inst_freq_bin_yin(j, inst_fbin[j]); //calculate instantaneous pitch using selected bin
         
         int index = (float)j * (SKIPLEN * 6) / HOP_LEN;
-        int midi = binary_search(firstnote, lastnote, j);
+//        int midi = binary_search(firstnote, lastnote, j); //comment this back!??
+        int midi = binary_search(firstnote, 40, j);
+
         int hz0 = (int) (pow(2,((midi - 69)/12.0)) * 440);
         inst_freq[j] = temp_cal_pitch(index*HOP_LEN*BYTES_PER_SAMPLE, hz0);
         /* quick fix for pitch: */
@@ -1684,13 +1937,17 @@ void calculate_amplitude(startframe, endframe) {
     fclose(fp);
 }
 
+
 static void
 draw_pitch(int b) {
     int i,j,s,e,color,f,midi,width,beg = 1;
     float fmidi,fbin;
     
-    
     for (j=firstnote; j < lastnote; j++) {
+        /* quick fix for lalo */
+//    for (j=firstnote; j < 460; j++) {
+    
+
         if ((b == 1) && (show_index(j) == 0)) continue;
         
         s = score.solo.note[j].frames; //starting position

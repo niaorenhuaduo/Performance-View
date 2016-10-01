@@ -48,6 +48,7 @@ typedef struct {
 typedef struct {
     int num;
     int *el;
+    float *dis;
 } GRAPH_NODE;
 
 void init_feature_list(AUDIO_FEATURE_LIST *a, char* choice);

@@ -29,6 +29,7 @@
 #include "belief.h"
 #include "new_score.h"
 #include "Resynthesis.h"
+#include "normal_cdf.h"
 
 
 //#define ORCH_PITCH  444  /* assuming that the orch recorded at a=440 */
@@ -481,6 +482,30 @@ vcode_audio_frames() {
     return(vring.audio_frames);
 }
 
+void vring_read_target_audio(char *name) {
+    
+    FILE *fp;
+    int i,total=0,samps,k,j;
+    unsigned char temp[READ_TEST_SIZE];
+    
+    if (vring.audio) free(vring.audio);
+    
+    fp = fopen(name,"rb");
+    if (fp == NULL) { printf("couldn't read %s\n",name); exit(0); }
+    while (feof(fp) == 0) total +=  fread(temp,1,READ_TEST_SIZE,fp);
+    //reads in slightly truncated audio files (keeps the maximum integral multiple of frames)
+    fclose(fp);
+    
+    samps = total/BYTES_PER_SAMPLE;
+    vring.audio_frames = (int) (samps / SAMPLES_PER_FRAME);
+    vring.audio = (unsigned char *) malloc(total);
+    if (vring.audio == 0) { printf("couldn't alloc %d bytes in read_48khz_raw_audio_name\n",total); exit(0);  }
+    
+    fp = fopen(name,"rb");
+    fread(vring.audio,1,total,fp);
+    fclose(fp);
+}
+
 int
 read_48khz_raw_audio_name(char *name) {
     FILE *fp;
@@ -534,24 +559,37 @@ static void append_features(char *name, char* spectral_name, char* fftmod_name, 
     
     char modulus_file_name[200];
     FILE *mp;
-    if (strcmp(feature_choice, "bins") == 0) {
+    if (strcmp(feature_choice, "bins") == 0 || strcmp(feature_choice, "cosine") == 0) {
         mp = fopen(fftmod_name, "rb");
         if (mp == NULL) { printf("can't open %s\n",fftmod_name); return; }
     }
     
     AUDIO_FEATURE af;
     
+    int newfile = 1;
+    
     int temp = 0;
     while (feof(fp) == 0) {
+        
+        if (newfile == 1) {
+            printf("\ndatabase file %s starts at frame %d", name, list->num);
+            newfile = 0;
+        }
+        
         fscanf(fp, "%d\t%f\t%f\t%d\t%d\n", &af.frame, &af.hz, &af.amp, &af.nominal, &af.onset);
         temp ++;
         if (af.nominal != -1) { database_pitch[af.nominal] = 1; }
+        
+        
+//        int hz0 = (int) (pow(2,((af.nominal - 69)/12.0)) * 440);
+//        if (af.hz/hz0 > 1.025593 || af.hz/hz0 < 0.9750456)
+//            af.hz = hz0;
         
         /* read in spectral data */
         af.spectral = (double*) malloc (spect_feature_dim*sizeof(double));
         fread(af.spectral, sizeof(double), spect_feature_dim, sp);
         
-        if (strcmp(feature_choice, "bins") == 0) {
+        if (strcmp(feature_choice, "bins") == 0 || strcmp(feature_choice, "cosine") == 0) {
             af.fft_mod = (float*) malloc (2049*sizeof(float));
             fread(af.fft_mod, sizeof(float), 2049, mp);
         }
@@ -564,10 +602,12 @@ static void append_features(char *name, char* spectral_name, char* fftmod_name, 
             *framecount += 1;
         }
     }
+    
+    printf("and ends at frame %d", list->num-1);
 
     fclose(fp);
     fclose(sp);
-    fclose(mp);
+    if (strcmp(feature_choice, "bins") == 0 || strcmp(feature_choice, "cosine") == 0) fclose(mp);
     
 }
 
@@ -642,7 +682,10 @@ read_48khz_raw_audio_data_base(char *directory, AUDIO_FEATURE_LIST *list) {
             strcpy(spectral_file_name , directory);
             strcat(spectral_file_name , audio_file_name_stub);
             strcat(spectral_file_name, ".");
-            strcat(spectral_file_name, feature_choice);
+            if (strcmp(feature_choice, "bins") == 0 || strcmp(feature_choice, "cosine") == 0)
+                strcat(spectral_file_name, "bins7");
+            else
+                strcat(spectral_file_name, feature_choice);
             
             strcpy(modulus_file_name, directory);
             strcat(modulus_file_name, audio_file_name_stub);
@@ -660,6 +703,51 @@ read_48khz_raw_audio_data_base(char *directory, AUDIO_FEATURE_LIST *list) {
     closedir (dir);
     return(1);
 }
+
+void synth_continuous_target(AUDIO_FEATURE_LIST saved_feature_list) {
+    
+    char name[200];
+    strcpy(name,audio_data_dir);
+    strcat(name,current_examp);
+    strcat(name,"_48k.raw");
+    
+    char index_name[200];
+    strcpy(index_name,user_dir);
+    strcat(index_name,"python/");
+    strcat(index_name,current_examp);
+    strcat(index_name,"target_index_pitch");
+    
+    FILE *fp;
+    fp = fopen(index_name, "w");
+    
+    vring_read_target_audio(name);
+    
+
+    for(int i = 1; i < saved_feature_list.num; i++){ //i is the frame index of test data
+        //if (i > 4500) continue;
+        AUDIO_FEATURE f1 = saved_feature_list.el[i];
+        
+        if (f1.nominal == -1 || f1.amp < 0.001) continue;
+
+        
+        /*settings for stamitz  */
+//        if (f1.frame < 4151*SKIPLEN * 6 / (float) (HOP_LEN)) continue;
+//        if (f1.frame >= 4603*SKIPLEN * 6 / (float) (HOP_LEN) && f1.frame < 4735*SKIPLEN * 6 / (float) (HOP_LEN)) continue;
+//        if (f1.frame > 6000*SKIPLEN * 6 / (float) (HOP_LEN)) continue;
+        
+        /* settings for the bassoon stamitz */
+//        if (f1.frame >= 705*SKIPLEN * 6 / (float) (HOP_LEN) && f1.frame < 812*SKIPLEN * 6 / (float) (HOP_LEN)) continue;
+//        
+//        float amp1 = cdf_gauss( (logf(f1.amp) - (float)saved_feature_list.amplitude.mu[f1.nominal])/(float)saved_feature_list.amplitude.sd[f1.nominal] );
+        
+        vcode_synth_frame_var(f1.frame, 1);
+//        fprintf(fp,"%d\n",i);
+        fprintf(fp,"%d\t%f\n",f1.frame ,f1.hz);
+
+    }
+    fclose(fp);
+}
+
 
 
 int
@@ -4937,7 +5025,9 @@ AUDIO_FEATURE cal_feature(int offset, float hz0) {
     af.amp = cal_amp(ptr);
     if (af.amp < 0.001) af.hz = hz0;
     else af.hz = cal_pitch_yin(ptr, hz0);
-    //printf("\nhz estimate %f", af.hz);
+    if (af.hz/hz0 > 1.025593 || af.hz/hz0 < 0.9750456) { //pitches more than a 7/16 tone apart
+        af.hz = hz0;
+    }
     return af;
 }
 

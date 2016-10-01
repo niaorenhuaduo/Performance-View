@@ -60,6 +60,8 @@ void temp_append_audio();
 float temp_cal_pitch(int offset, float hz0);
 
 void vcode_synth_frame_var(int cur_frame, float pv_ratio);
+void vring_read_target_audio(char *name);
+
 
 //------------------------
 // might want to move these elsewhere along with the #include <stdio.h>
